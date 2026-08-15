@@ -27,6 +27,6 @@ Assistant integration.
 - Temporary connection failures retain the last valid value within its freshness window.
 - All location selectors are entered and maintained through the integration UI.
 
-Home Assistant 2026.3.0 or newer is required. After installation, add Weather
-Fusion from **Settings > Devices & services > Add integration** and enter the
+Home Assistant 2026.3.0 or newer is required. After installation, add Korea
+Weather Fusion from **Settings > Devices & services > Add integration** and enter the
 location selectors requested for each service.
