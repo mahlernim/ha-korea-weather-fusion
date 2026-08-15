@@ -10,7 +10,7 @@ Korea Weather Fusion은 대한민국 날씨와 대기질 정보를 Home Assistan
 볼 수 있도록 기상청, 네이버 날씨, 웨더아이의 정보를 결합하는 사용자 지정
 통합구성요소입니다.
 
-![Korea Weather Fusion 날씨 요약 예시](docs/images/overview-ko.png)
+![Home Assistant에 설치된 Korea Weather Fusion 통합구성요소](docs/images/overview-ko.png)
 
 ### 주요 기능
 
@@ -51,7 +51,11 @@ API 키나 별도 계정은 필요하지 않습니다.
 
 ### 처음 설정하기
 
-![Korea Weather Fusion 설정 예시](docs/images/setup-ko.png)
+![Korea Weather Fusion 예보 지역 선택](docs/images/setup-ko.png)
+
+![Korea Weather Fusion 대기 측정소 선택](docs/images/setup-station-ko.png)
+
+위 화면은 실제 Home Assistant 설정 흐름을 서울·강남구 예시로 보여 줍니다.
 
 1. 목록에서 모니터링할 한국 예보 지역을 선택합니다.
 2. 해당 지역에서 사용할 수 있는 웨더아이 대기 측정소를 선택합니다.
@@ -101,7 +105,7 @@ Korea Weather Fusion is a Home Assistant custom integration for Korean weather a
 air quality. It combines data from KMA (`weather.go.kr`), Naver Weather, and
 Weatheri into a practical set of everyday entities.
 
-![Korea Weather Fusion overview example](docs/images/overview-ko.png)
+![Korea Weather Fusion installed in Home Assistant](docs/images/overview-ko.png)
 
 ### Features
 
@@ -139,7 +143,11 @@ under your Home Assistant configuration directory, then restart Home Assistant.
 
 ### First-time setup
 
-![Korea Weather Fusion setup example](docs/images/setup-ko.png)
+![Choose a Korea Weather Fusion forecast location](docs/images/setup-ko.png)
+
+![Choose a Korea Weather Fusion air-quality station](docs/images/setup-station-ko.png)
+
+These real Home Assistant screens use Seoul and Gangnam-gu as generic examples.
 
 Choose a Korean forecast location, then choose a nearby Weatheri air-quality
 station. The integration automatically resolves the KMA area and Naver queries,
