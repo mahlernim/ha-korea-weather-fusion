@@ -1,0 +1,95 @@
+{
+  "title": "Weather Fusion",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure weather sources",
+        "description": "Enter the location selectors used by KMA, Naver, and Weatheri.",
+        "data": {
+          "kma_code": "KMA location code",
+          "naver_weather_query": "Naver weather query",
+          "naver_air_query": "Naver air-quality query",
+          "weatheri_forecast_rid": "Weatheri forecast RID",
+          "weatheri_forecast_group": "Weatheri forecast group",
+          "weatheri_location": "Weatheri location name",
+          "weatheri_air_region_code": "Weatheri air region code",
+          "weatheri_air_station": "Weatheri air station"
+        }
+      }
+    },
+    "abort": {"already_configured": "Weather Fusion is already configured."},
+    "error": {"invalid_code": "Enter digits only."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Weather source settings",
+        "description": "Changing a selector reloads Weather Fusion. Existing entity IDs are preserved.",
+        "data": {
+          "kma_code": "KMA location code",
+          "naver_weather_query": "Naver weather query",
+          "naver_air_query": "Naver air-quality query",
+          "weatheri_forecast_rid": "Weatheri forecast RID",
+          "weatheri_forecast_group": "Weatheri forecast group",
+          "weatheri_location": "Weatheri location name",
+          "weatheri_air_region_code": "Weatheri air region code",
+          "weatheri_air_station": "Weatheri air station"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {"name": "Temperature"},
+      "humidity": {"name": "Humidity"},
+      "wind_speed": {"name": "Wind speed"},
+      "pm10": {"name": "PM10"},
+      "pm25": {"name": "PM2.5"},
+      "today_high": {"name": "Today high"},
+      "today_low": {"name": "Today low"},
+      "tomorrow_high": {"name": "Tomorrow high"},
+      "tomorrow_low": {"name": "Tomorrow low"},
+      "forecast_3h": {"name": "Forecast 3h"},
+      "forecast_6h": {"name": "Forecast 6h"},
+      "forecast_9h": {"name": "Forecast 9h"},
+      "forecast_12h": {"name": "Forecast 12h"},
+      "kma_temperature": {"name": "KMA Temperature"},
+      "kma_humidity": {"name": "KMA Humidity"},
+      "kma_wind_speed": {"name": "KMA Wind speed"},
+      "kma_pm10": {"name": "KMA PM10"},
+      "kma_pm25": {"name": "KMA PM2.5"},
+      "naver_temperature": {"name": "Naver Temperature"},
+      "naver_humidity": {"name": "Naver Humidity"},
+      "naver_wind_speed": {"name": "Naver Wind speed"},
+      "naver_pm10": {"name": "Naver PM10"},
+      "naver_pm25": {"name": "Naver PM2.5"},
+      "naver_today_high": {"name": "Naver Today high"},
+      "naver_today_low": {"name": "Naver Today low"},
+      "naver_tomorrow_high": {"name": "Naver Tomorrow high"},
+      "naver_tomorrow_low": {"name": "Naver Tomorrow low"},
+      "naver_uv": {"name": "Naver UV"},
+      "naver_wind_direction": {"name": "Naver Wind direction"},
+      "naver_forecast_3h": {"name": "Naver Forecast 3h"},
+      "naver_forecast_6h": {"name": "Naver Forecast 6h"},
+      "naver_forecast_9h": {"name": "Naver Forecast 9h"},
+      "naver_forecast_12h": {"name": "Naver Forecast 12h"},
+      "weatheri_today_high": {"name": "Weatheri Today high"},
+      "weatheri_today_low": {"name": "Weatheri Today low"},
+      "weatheri_tomorrow_high": {"name": "Weatheri Tomorrow high"},
+      "weatheri_tomorrow_low": {"name": "Weatheri Tomorrow low"},
+      "weatheri_pm10": {"name": "Weatheri PM10"},
+      "weatheri_pm25": {"name": "Weatheri PM2.5"},
+      "weatheri_ozone": {"name": "Weatheri Ozone"},
+      "weatheri_nitrogen_dioxide": {"name": "Weatheri Nitrogen dioxide"},
+      "weatheri_carbon_monoxide": {"name": "Weatheri Carbon monoxide"},
+      "weatheri_sulfur_dioxide": {"name": "Weatheri Sulfur dioxide"},
+      "weatheri_aqi": {"name": "Weatheri Comprehensive AQI"}
+    },
+    "binary_sensor": {
+      "data_current": {"name": "Data current"},
+      "forecast_data_current": {"name": "Forecast data current"},
+      "weatheri_forecast_data_current": {"name": "Weatheri forecast data current"},
+      "weatheri_air_data_current": {"name": "Weatheri air data current"}
+    }
+  }
+}
