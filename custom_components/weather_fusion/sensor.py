@@ -1,4 +1,4 @@
-"""Representative Weather Fusion sensors."""
+"""Representative Korea Weather Fusion sensors."""
 
 from __future__ import annotations
 

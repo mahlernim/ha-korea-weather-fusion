@@ -1,5 +1,5 @@
 {
-  "title": "Weather Fusion",
+  "title": "Korea Weather Fusion",
   "config": {
     "step": {
       "user": {
@@ -17,14 +17,14 @@
         }
       }
     },
-    "abort": {"already_configured": "Weather Fusion is already configured."},
+    "abort": {"already_configured": "Korea Weather Fusion is already configured."},
     "error": {"invalid_code": "Enter digits only."}
   },
   "options": {
     "step": {
       "init": {
         "title": "Weather source settings",
-        "description": "Changing a selector reloads Weather Fusion. Existing entity IDs are preserved.",
+        "description": "Changing a selector reloads Korea Weather Fusion. Existing entity IDs are preserved.",
         "data": {
           "kma_code": "KMA location code",
           "naver_weather_query": "Naver weather query",

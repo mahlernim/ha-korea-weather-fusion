@@ -1,4 +1,4 @@
-# Weather Fusion 0.6.0
+# Korea Weather Fusion 0.6.0
 
 ## 한국어
 
@@ -12,12 +12,12 @@ Assistant 통합구성요소에서 확인할 수 있는 첫 공개 준비 버전
 - 모든 지역 식별자는 설정 화면에서 입력하고 나중에 변경할 수 있습니다.
 
 Home Assistant 2026.3.0 이상이 필요합니다. 처음 설치한 뒤
-**설정 > 기기 및 서비스 > 통합구성요소 추가**에서 Weather Fusion을
+**설정 > 기기 및 서비스 > 통합구성요소 추가**에서 Korea Weather Fusion을
 추가하고 각 서비스의 지역 식별자를 입력하세요.
 
 ## English
 
-This is the first public-ready version of Weather Fusion, combining Korean
+This is the first public-ready version of Korea Weather Fusion, combining Korean
 weather and air-quality data from KMA, Naver Weather, and Weatheri in one Home
 Assistant integration.
 

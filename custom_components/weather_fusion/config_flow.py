@@ -1,4 +1,4 @@
-"""Config flow for Weather Fusion."""
+"""Config flow for Korea Weather Fusion."""
 
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def _config_schema(values: dict[str, Any]) -> vol.Schema:
 
 
 class WeatherFusionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Configure the singleton Weather Fusion helper."""
+    """Configure the singleton Korea Weather Fusion helper."""
 
     VERSION = 2
 
@@ -92,13 +92,13 @@ class WeatherFusionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create a configured Weather Fusion entry."""
+        """Create a configured Korea Weather Fusion entry."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
         if user_input is not None:
             if not (errors := _input_errors(user_input)):
                 return self.async_create_entry(
-                    title="Weather Fusion", data=normalize_config(user_input)
+                    title="Korea Weather Fusion", data=normalize_config(user_input)
                 )
         else:
             errors = {}
@@ -110,12 +110,12 @@ class WeatherFusionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class WeatherFusionOptionsFlow(config_entries.OptionsFlow):
-    """Edit source selectors and reload Weather Fusion."""
+    """Edit source selectors and reload Korea Weather Fusion."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Manage Weather Fusion source options."""
+        """Manage Korea Weather Fusion source options."""
         current = {**self.config_entry.data, **self.config_entry.options}
         if user_input is not None:
             if not (errors := _input_errors(user_input)):

@@ -1,4 +1,4 @@
-"""Constants for Weather Fusion."""
+"""Constants for Korea Weather Fusion."""
 
 from __future__ import annotations
 

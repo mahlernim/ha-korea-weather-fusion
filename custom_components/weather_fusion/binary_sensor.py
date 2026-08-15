@@ -1,4 +1,4 @@
-"""Weather Fusion health sensors."""
+"""Korea Weather Fusion health sensors."""
 
 from __future__ import annotations
 

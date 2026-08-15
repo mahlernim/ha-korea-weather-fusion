@@ -1,4 +1,4 @@
-"""Tests for Weather Fusion configuration and entry migration."""
+"""Tests for Korea Weather Fusion configuration."""
 
 from __future__ import annotations
 

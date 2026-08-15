@@ -1,4 +1,4 @@
-"""Configuration model and source URL builders for Weather Fusion."""
+"""Configuration model and source URL builders for Korea Weather Fusion."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def normalize_config(values: Mapping[str, Any]) -> dict[str, str]:
 
 @dataclass(frozen=True, slots=True)
 class WeatherFusionSettings:
-    """Resolved source selectors for one Weather Fusion entry."""
+    """Resolved source selectors for one Korea Weather Fusion entry."""
 
     kma_code: str
     naver_weather_query: str

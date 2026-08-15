@@ -1,4 +1,4 @@
-"""Weather Fusion integration."""
+"""Korea Weather Fusion integration."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from .fusion import WeatherFusionManager
 
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload Weather Fusion after options change."""
+    """Reload Korea Weather Fusion after options change."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Weather Fusion from a config entry."""
+    """Set up Korea Weather Fusion from a config entry."""
     settings = WeatherFusionSettings.from_mapping({**entry.data, **entry.options})
     manager = WeatherFusionManager(hass, entry.entry_id, settings=settings)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
@@ -28,7 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload Weather Fusion."""
+    """Unload Korea Weather Fusion."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         manager: WeatherFusionManager = hass.data[DOMAIN].pop(entry.entry_id)

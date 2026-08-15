@@ -1,4 +1,4 @@
-"""Unit tests for Weather Fusion selection and freshness."""
+"""Unit tests for Korea Weather Fusion selection and freshness."""
 
 from __future__ import annotations
 

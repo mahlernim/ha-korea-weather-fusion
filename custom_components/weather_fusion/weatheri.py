@@ -41,7 +41,7 @@ AIR_KEYS = tuple(_AIR_HEADERS)
 _REQUEST_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.5",
-    "User-Agent": "Home Assistant Weather Fusion",
+    "User-Agent": "Home Assistant Korea Weather Fusion",
 }
 
 

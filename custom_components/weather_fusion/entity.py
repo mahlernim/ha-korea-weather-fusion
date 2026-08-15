@@ -1,4 +1,4 @@
-"""Base Weather Fusion entity."""
+"""Base Korea Weather Fusion entity."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ class WeatherFusionEntity(Entity):
             identifiers={(DOMAIN, DOMAIN)},
             manufacturer="Local Home Assistant",
             model="State fusion helper",
-            name="Weather Fusion",
+            name="Korea Weather Fusion",
         )
 
     async def async_added_to_hass(self) -> None:

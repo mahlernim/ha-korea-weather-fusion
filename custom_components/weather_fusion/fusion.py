@@ -244,7 +244,7 @@ class WeatherFusionManager:
     ) -> None:
         self.hass = hass
         if settings is None:
-            raise ValueError("Weather Fusion settings are required")
+            raise ValueError("Korea Weather Fusion settings are required")
         self.settings = settings
         self._listeners: set[Callable[[], None]] = set()
         self._unsub_timer: Callable[[], None] | None = None
@@ -375,7 +375,7 @@ class WeatherFusionManager:
                 async with session.get(
                     url,
                     timeout=20,
-                    headers={"User-Agent": "Home Assistant Weather Fusion"},
+                    headers={"User-Agent": "Home Assistant Korea Weather Fusion"},
                 ) as response:
                     response.raise_for_status()
                     html = await response.text()

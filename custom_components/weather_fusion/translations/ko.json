@@ -1,5 +1,5 @@
 {
-  "title": "날씨 통합",
+  "title": "한국 날씨 통합",
   "config": {
     "step": {
       "user": {
@@ -17,7 +17,7 @@
         }
       }
     },
-    "abort": {"already_configured": "날씨 통합이 이미 구성되어 있습니다."},
+    "abort": {"already_configured": "한국 날씨 통합이 이미 구성되어 있습니다."},
     "error": {"invalid_code": "숫자만 입력하세요."}
   },
   "options": {

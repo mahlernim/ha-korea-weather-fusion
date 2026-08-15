@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "weather-fusion-ha"
+name = "korea-weather-fusion-ha"
 version = "0.6.0"
 description = "Korean weather and air-quality fusion for Home Assistant"
 readme = "README.md"

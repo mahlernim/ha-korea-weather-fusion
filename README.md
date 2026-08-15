@@ -1,16 +1,16 @@
-# Weather Fusion
+# Korea Weather Fusion
 
-[![HACS validation](https://github.com/mahlernim/weather-fusion/actions/workflows/hacs.yml/badge.svg)](https://github.com/mahlernim/weather-fusion/actions/workflows/hacs.yml)
-[![Hassfest](https://github.com/mahlernim/weather-fusion/actions/workflows/hassfest.yml/badge.svg)](https://github.com/mahlernim/weather-fusion/actions/workflows/hassfest.yml)
-[![Tests](https://github.com/mahlernim/weather-fusion/actions/workflows/tests.yml/badge.svg)](https://github.com/mahlernim/weather-fusion/actions/workflows/tests.yml)
+[![HACS validation](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hacs.yml/badge.svg)](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hacs.yml)
+[![Hassfest](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hassfest.yml/badge.svg)](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hassfest.yml)
+[![Tests](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/tests.yml/badge.svg)](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/tests.yml)
 
 ## 한국어
 
-Weather Fusion은 대한민국 날씨와 대기질 정보를 Home Assistant에서 한눈에
+Korea Weather Fusion은 대한민국 날씨와 대기질 정보를 Home Assistant에서 한눈에
 볼 수 있도록 기상청, 네이버 날씨, 웨더아이의 정보를 결합하는 사용자 지정
 통합구성요소입니다.
 
-![Weather Fusion 날씨 요약 예시](docs/images/overview-ko.png)
+![Korea Weather Fusion 날씨 요약 예시](docs/images/overview-ko.png)
 
 ### 주요 기능
 
@@ -36,10 +36,10 @@ API 키나 별도 계정은 필요하지 않습니다.
 #### HACS 사용자 지정 저장소
 
 1. HACS에서 **사용자 지정 저장소**를 엽니다.
-2. `https://github.com/mahlernim/weather-fusion`을 추가하고 유형으로
+2. `https://github.com/mahlernim/korea-weather-fusion`을 추가하고 유형으로
    **Integration**을 선택합니다.
-3. Weather Fusion을 다운로드하고 Home Assistant를 다시 시작합니다.
-4. **설정 > 기기 및 서비스 > 통합구성요소 추가 > Weather Fusion**을
+3. Korea Weather Fusion을 다운로드하고 Home Assistant를 다시 시작합니다.
+4. **설정 > 기기 및 서비스 > 통합구성요소 추가 > Korea Weather Fusion**을
    선택합니다.
 
 [![Home Assistant에서 통합구성요소 추가](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=weather_fusion)
@@ -51,7 +51,7 @@ API 키나 별도 계정은 필요하지 않습니다.
 
 ### 처음 설정하기
 
-![Weather Fusion 설정 예시](docs/images/setup-ko.png)
+![Korea Weather Fusion 설정 예시](docs/images/setup-ko.png)
 
 설정 화면에서 다음 값을 입력합니다. 아래 검색어와 숫자는 형식을 보여 주는
 일반적인 예시이며, 실제로 사용할 지역에 맞게 바꾸어야 합니다.
@@ -67,8 +67,8 @@ API 키나 별도 계정은 필요하지 않습니다.
 | 웨더아이 대기 권역 코드 | 대기질 주소의 `a` 값 | `01` |
 | 웨더아이 대기 측정소 | 대기질 표에 표시되는 측정소명 | `종로구` |
 
-설치 후 지역을 바꾸려면 **설정 > 기기 및 서비스 > Weather Fusion > 구성**을
-선택합니다. 지역을 변경해도 기존 Weather Fusion 엔티티 ID는 유지됩니다.
+설치 후 지역을 바꾸려면 **설정 > 기기 및 서비스 > Korea Weather Fusion > 구성**을
+선택합니다. 지역을 변경해도 기존 Korea Weather Fusion 엔티티 ID는 유지됩니다.
 
 ### 제공 엔티티
 
@@ -88,7 +88,7 @@ API 키나 별도 계정은 필요하지 않습니다.
 
 ### 개인정보와 한계
 
-Weather Fusion은 입력한 검색어와 지역 식별자를 각 날씨 제공처에 직접
+Korea Weather Fusion은 입력한 검색어와 지역 식별자를 각 날씨 제공처에 직접
 전송합니다. 별도의 중계 서버나 계정 로그인을 사용하지 않습니다. 이 프로젝트는
 기상청, 네이버 또는 웨더아이의 공식 제품이 아니며 각 제공처와 제휴하지
 않습니다. 제공처 웹페이지의 변경이나 이용 제한에 따라 기능이 달라질 수
@@ -98,11 +98,11 @@ Weather Fusion은 입력한 검색어와 지역 식별자를 각 날씨 제공�
 
 ## English
 
-Weather Fusion is a Home Assistant custom integration for Korean weather and
+Korea Weather Fusion is a Home Assistant custom integration for Korean weather and
 air quality. It combines data from KMA (`weather.go.kr`), Naver Weather, and
 Weatheri into a practical set of everyday entities.
 
-![Weather Fusion overview example](docs/images/overview-ko.png)
+![Korea Weather Fusion overview example](docs/images/overview-ko.png)
 
 ### Features
 
@@ -127,9 +127,9 @@ No API key or separate account is required.
 #### HACS custom repository
 
 1. Open **Custom repositories** in HACS.
-2. Add `https://github.com/mahlernim/weather-fusion` as an **Integration**.
-3. Download Weather Fusion and restart Home Assistant.
-4. Go to **Settings > Devices & services > Add integration > Weather Fusion**.
+2. Add `https://github.com/mahlernim/korea-weather-fusion` as an **Integration**.
+3. Download Korea Weather Fusion and restart Home Assistant.
+4. Go to **Settings > Devices & services > Add integration > Korea Weather Fusion**.
 
 [![Add integration to Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=weather_fusion)
 
@@ -140,15 +140,15 @@ under your Home Assistant configuration directory, then restart Home Assistant.
 
 ### First-time setup
 
-![Weather Fusion setup example](docs/images/setup-ko.png)
+![Korea Weather Fusion setup example](docs/images/setup-ko.png)
 
 The form requests a KMA location code, natural-language Naver weather and air
 queries, and the Weatheri forecast and air-quality identifiers. The values in
 the screenshot and Korean table above are generic examples; replace them with
 the selectors for the location you want to monitor.
 
-You can later change them from **Settings > Devices & services > Weather Fusion
-> Configure**. Existing Weather Fusion entity IDs remain stable.
+You can later change them from **Settings > Devices & services > Korea Weather Fusion
+> Configure**. Existing Korea Weather Fusion entity IDs remain stable.
 
 ### Troubleshooting
 
@@ -160,7 +160,7 @@ You can later change them from **Settings > Devices & services > Weather Fusion
 
 ### Privacy and limitations
 
-Weather Fusion sends the configured queries and location identifiers directly
+Korea Weather Fusion sends the configured queries and location identifiers directly
 to the three weather providers. It uses no relay server and requires no account
 login. This independent project is not affiliated with KMA, Naver, or Weatheri.
 Availability may change when a provider changes its public website or access
