@@ -1,32 +1,38 @@
-# Korea Weather Fusion 0.6.0
+# Korea Weather Fusion 0.7.0
 
 ## 한국어
 
-기상청, 네이버 날씨, 웨더아이의 날씨·대기질 정보를 하나의 Home
-Assistant 통합구성요소에서 확인할 수 있는 첫 공개 준비 버전입니다.
+지역 코드와 검색어를 직접 찾지 않아도 되는 새로운 안내식 설정을 추가했습니다.
 
-- 현재 기온·습도·풍속은 사용할 수 있는 최신 소스를 결합합니다.
-- 미세먼지와 일 최고·최저기온은 우선순위와 최신성 기준으로 선택합니다.
-- 각 원본 소스의 진단 엔티티를 제공하여 값을 비교할 수 있습니다.
-- 일시적인 통신 실패에는 마지막 정상 값을 유효 시간 동안 유지합니다.
-- 모든 지역 식별자는 설정 화면에서 입력하고 나중에 변경할 수 있습니다.
+- 172개 한국 예보 지역을 검색 가능한 목록에서 선택할 수 있습니다.
+- 선택한 지역에서 사용할 수 있는 웨더아이 대기 측정소만 표시합니다.
+- 측정소 선택을 이용해 기상청 지역과 네이버 날씨·대기질 검색 지역을 더
+  구체적으로 맞춥니다.
+- 설정을 저장하기 전에 기상청, 네이버, 웨더아이의 필수 응답을 확인합니다.
+- 기존 사용자는 지역 식별자와 엔티티 ID를 그대로 유지하며 업데이트할 수
+  있습니다.
+- 목록에 없는 지역을 위한 고급 수동 설정도 계속 제공합니다.
 
-Home Assistant 2026.3.0 이상이 필요합니다. 처음 설치한 뒤
-**설정 > 기기 및 서비스 > 통합구성요소 추가**에서 Korea Weather Fusion을
-추가하고 각 서비스의 지역 식별자를 입력하세요.
+네이버는 일부 지역 검색에서 미세먼지 카드를 제공하지 않을 수 있습니다. 이
+경우에도 기상청과 웨더아이 대기질을 이용한 통합 값은 계속 제공됩니다.
+
+Home Assistant 2026.3.0 이상이 필요합니다. 업데이트 후 기존 설정을 다시 만들
+필요는 없습니다. 지역을 바꾸려면 통합구성요소의 **구성**을 선택하세요.
 
 ## English
 
-This is the first public-ready version of Korea Weather Fusion, combining Korean
-weather and air-quality data from KMA, Naver Weather, and Weatheri in one Home
-Assistant integration.
+This release adds guided setup without requiring users to find provider codes or
+construct search queries manually.
 
-- Current temperature, humidity, and wind combine available fresh sources.
-- Air quality and daily highs/lows use freshness-aware source priorities.
-- Source-specific diagnostic entities make comparisons and troubleshooting easy.
-- Temporary connection failures retain the last valid value within its freshness window.
-- All location selectors are entered and maintained through the integration UI.
+- Choose from 172 searchable Korean forecast locations.
+- See only the Weatheri air stations available for the selected area.
+- Use the station choice to refine the KMA area and Naver weather and air queries.
+- Validate required live responses from KMA, Naver, and Weatheri before saving.
+- Upgrade existing installations without changing provider selectors or entity IDs.
+- Keep Advanced manual setup for unsupported or specialized locations.
 
-Home Assistant 2026.3.0 or newer is required. After installation, add Korea
-Weather Fusion from **Settings > Devices & services > Add integration** and enter the
-location selectors requested for each service.
+Naver does not expose its PM card for every local search. KMA and Weatheri air
+quality remain available to the fused entities when that happens.
+
+Home Assistant 2026.3.0 or newer is required. Existing users do not need to
+recreate the integration after updating. Use **Configure** to change location.

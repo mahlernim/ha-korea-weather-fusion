@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -40,6 +39,7 @@ from .const import (
     WEATHERI_RETRY_DELAYS,
     WEATHERI_SCAN_INTERVAL,
 )
+from .kma import parse_current_weather
 from .naver import parse_air, parse_weather
 from .source import SourceSnapshot
 from .weatheri import (
@@ -573,46 +573,7 @@ class WeatherFusionManager:
 
     def _parse_kma_html(self, html: str) -> dict[str, float]:
         """Extract current weather.go.kr values from the rendered fragment."""
-        temperature = self._extract_number(
-            html, r'<span class="tmp">\s*([-+]?\d+(?:\.\d+)?)'
-        )
-        humidity = self._extract_number(
-            html,
-            r'<span class="lbl ic-hm".*?</span>\s*'
-            r'<span class="val">\s*([-+]?\d+(?:\.\d+)?)',
-        )
-        wind_kmh = self._extract_number(
-            html,
-            r'<span class="lbl ic-wind".*?</span>\s*'
-            r'<span class="val">.*?([-+]?\d+(?:\.\d+)?)\s*'
-            r'<small class="unit">km/h',
-        )
-        air_values = self._extract_air_values(html)
-        pm25 = air_values[0]
-        pm10 = air_values[1]
-        return {
-            "temperature": temperature,
-            "humidity": humidity,
-            "wind_speed": round(wind_kmh / 3.6, 1),
-            "pm10": pm10,
-            "pm25": pm25,
-        }
-
-    def _extract_number(self, html: str, pattern: str) -> float:
-        match = re.search(pattern, html, flags=re.DOTALL)
-        if not match:
-            raise ValueError(f"missing_pattern:{pattern}")
-        return float(match.group(1))
-
-    def _extract_air_values(self, html: str) -> tuple[float, float]:
-        values = re.findall(
-            r'<span class="air-lvv">\s*([-+]?\d+(?:\.\d+)?)\s*</span>',
-            html,
-            flags=re.DOTALL,
-        )
-        if len(values) < 2:
-            raise ValueError("missing_air_values")
-        return float(values[0]), float(values[1])
+        return parse_current_weather(html)
 
     def _naver_snapshot(self, group: str) -> SourceSnapshot:
         snapshot = self._naver_snapshots[group]

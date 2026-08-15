@@ -3,8 +3,22 @@
   "config": {
     "step": {
       "user": {
-        "title": "날씨 소스 구성",
-        "description": "기상청, 네이버, 웨더아이에서 사용할 지역 식별자를 입력하세요.",
+        "title": "지역 선택",
+        "description": "한국 예보 지역을 선택하세요. 기상청, 네이버, 웨더아이 설정을 자동으로 찾고 실제 데이터를 확인합니다.",
+        "data": {
+          "location_id": "예보 지역"
+        }
+      },
+      "air_station": {
+        "title": "대기 측정소 선택",
+        "description": "선택 지역: {location}. 기상청 연결 지역: {kma_location}. 웨더아이 측정소를 선택하면 세 소스를 모두 확인합니다.",
+        "data": {
+          "weatheri_air_station": "웨더아이 대기 측정소"
+        }
+      },
+      "advanced": {
+        "title": "고급 수동 설정",
+        "description": "모든 소스 식별자를 직접 입력합니다. 지원되지 않는 지역이나 문제 해결에만 사용하세요.",
         "data": {
           "kma_code": "기상청 지역 코드",
           "naver_weather_query": "네이버 날씨 검색어",
@@ -17,14 +31,45 @@
         }
       }
     },
-    "abort": {"already_configured": "한국 날씨 통합이 이미 구성되어 있습니다."},
-    "error": {"invalid_code": "숫자만 입력하세요."}
+    "abort": {
+      "already_configured": "한국 날씨 통합이 이미 구성되어 있습니다.",
+      "unknown": "설정 흐름을 계속할 수 없습니다. 처음부터 다시 시작하세요."
+    },
+    "error": {
+      "invalid_code": "숫자만 입력하세요.",
+      "invalid_location": "지원되는 예보 지역을 선택하세요.",
+      "invalid_station": "현재 목록에서 측정소를 선택하세요.",
+      "cannot_connect_kma": "기상청 지역 목록을 불러올 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+      "cannot_resolve_kma": "이 지역을 기상청 지역과 연결할 수 없습니다. 고급 수동 설정을 사용하세요.",
+      "cannot_connect_weatheri": "웨더아이 예보 또는 측정소 데이터를 불러올 수 없습니다. 다시 시도하세요.",
+      "invalid_weatheri_data": "웨더아이 설정 데이터가 불완전하거나 예상 형식과 다릅니다.",
+      "cannot_connect_naver_weather": "네이버 날씨를 확인할 수 없습니다. 다시 시도하세요.",
+      "cannot_connect_naver_air": "네이버 대기질을 확인할 수 없습니다. 다시 시도하세요.",
+      "invalid_kma_data": "연결된 지역에서 유효한 기상청 날씨 데이터를 받지 못했습니다.",
+      "invalid_naver_weather_data": "이 지역에서 유효한 네이버 날씨 데이터를 받지 못했습니다.",
+      "invalid_naver_air_data": "이 지역에서 유효한 네이버 대기질 데이터를 받지 못했습니다.",
+      "invalid_weatheri_air_data": "선택한 측정소에서 유효한 웨더아이 대기질 데이터를 받지 못했습니다."
+    }
   },
   "options": {
     "step": {
       "init": {
-        "title": "날씨 소스 설정",
-        "description": "지역 식별자를 변경하면 날씨 통합을 다시 불러옵니다. 기존 엔티티 ID는 유지됩니다.",
+        "title": "지역 변경",
+        "description": "목록에서 지역을 선택하거나 고급 수동 설정을 선택하세요. 기존 엔티티 ID는 유지됩니다.",
+        "data": {
+          "location_id": "예보 지역"
+        }
+      },
+      "air_station": {
+        "title": "대기 측정소 선택",
+        "description": "선택 지역: {location}. 기상청 연결 지역: {kma_location}. 웨더아이 측정소를 선택하면 세 소스를 모두 확인합니다.",
+        "data": {
+          "weatheri_air_station": "웨더아이 대기 측정소"
+        }
+      },
+      "advanced": {
+        "title": "고급 수동 설정",
+        "description": "모든 소스 식별자를 직접 변경합니다. 기존 엔티티 ID는 유지됩니다.",
         "data": {
           "kma_code": "기상청 지역 코드",
           "naver_weather_query": "네이버 날씨 검색어",
@@ -36,6 +81,21 @@
           "weatheri_air_station": "웨더아이 대기 측정소"
         }
       }
+    },
+    "error": {
+      "invalid_code": "숫자만 입력하세요.",
+      "invalid_location": "지원되는 예보 지역을 선택하세요.",
+      "invalid_station": "현재 목록에서 측정소를 선택하세요.",
+      "cannot_connect_kma": "기상청 지역 목록을 불러올 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+      "cannot_resolve_kma": "이 지역을 기상청 지역과 연결할 수 없습니다. 고급 수동 설정을 사용하세요.",
+      "cannot_connect_weatheri": "웨더아이 예보 또는 측정소 데이터를 불러올 수 없습니다. 다시 시도하세요.",
+      "invalid_weatheri_data": "웨더아이 설정 데이터가 불완전하거나 예상 형식과 다릅니다.",
+      "cannot_connect_naver_weather": "네이버 날씨를 확인할 수 없습니다. 다시 시도하세요.",
+      "cannot_connect_naver_air": "네이버 대기질을 확인할 수 없습니다. 다시 시도하세요.",
+      "invalid_kma_data": "연결된 지역에서 유효한 기상청 날씨 데이터를 받지 못했습니다.",
+      "invalid_naver_weather_data": "이 지역에서 유효한 네이버 날씨 데이터를 받지 못했습니다.",
+      "invalid_naver_air_data": "이 지역에서 유효한 네이버 대기질 데이터를 받지 못했습니다.",
+      "invalid_weatheri_air_data": "선택한 측정소에서 유효한 웨더아이 대기질 데이터를 받지 못했습니다."
     }
   },
   "entity": {

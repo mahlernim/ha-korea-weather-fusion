@@ -5,7 +5,11 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .configuration import WeatherFusionSettings
+from .configuration import (
+    ADVANCED_LOCATION_ID,
+    CONF_LOCATION_ID,
+    WeatherFusionSettings,
+)
 from .const import DOMAIN, PLATFORMS
 from .fusion import WeatherFusionManager
 
@@ -13,6 +17,17 @@ from .fusion import WeatherFusionManager
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload Korea Weather Fusion after options change."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Preserve existing manual selectors when adding guided onboarding metadata."""
+    if entry.version > 3:
+        return False
+    if entry.version < 3:
+        data = dict(entry.data)
+        data.setdefault(CONF_LOCATION_ID, ADVANCED_LOCATION_ID)
+        hass.config_entries.async_update_entry(entry, data=data, version=3)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

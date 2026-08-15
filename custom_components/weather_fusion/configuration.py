@@ -15,6 +15,9 @@ CONF_WEATHERI_FORECAST_GROUP = "weatheri_forecast_group"
 CONF_WEATHERI_LOCATION = "weatheri_location"
 CONF_WEATHERI_AIR_REGION_CODE = "weatheri_air_region_code"
 CONF_WEATHERI_AIR_STATION = "weatheri_air_station"
+CONF_LOCATION_ID = "location_id"
+
+ADVANCED_LOCATION_ID = "__advanced__"
 
 CONFIG_KEYS = (
     CONF_KMA_CODE,

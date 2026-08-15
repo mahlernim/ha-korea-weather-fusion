@@ -8,9 +8,17 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
+from .catalog import location_options
 from .configuration import (
+    ADVANCED_LOCATION_ID,
     CONF_KMA_CODE,
+    CONF_LOCATION_ID,
     CONF_NAVER_AIR_QUERY,
     CONF_NAVER_WEATHER_QUERY,
     CONF_WEATHERI_AIR_REGION_CODE,
@@ -21,6 +29,13 @@ from .configuration import (
     normalize_config,
 )
 from .const import DOMAIN
+from .onboarding import (
+    GuidedSetup,
+    GuidedSetupError,
+    async_finalize_guided_values,
+    async_prepare_guided_setup,
+    async_validate_guided_setup,
+)
 
 _TEXT = vol.All(str, vol.Strip, vol.Length(min=1, max=100))
 _CODE = vol.All(str, vol.Strip, vol.Length(min=1, max=20))
@@ -30,6 +45,16 @@ _CODE_FIELDS = (
     CONF_WEATHERI_FORECAST_GROUP,
     CONF_WEATHERI_AIR_REGION_CODE,
 )
+
+
+def _selector(options: list[tuple[str, str]]) -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[{"value": value, "label": label} for value, label in options],
+            mode=SelectSelectorMode.DROPDOWN,
+            sort=False,
+        )
+    )
 
 
 def _input_errors(values: dict[str, Any]) -> dict[str, str]:
@@ -42,6 +67,7 @@ def _input_errors(values: dict[str, Any]) -> dict[str, str]:
 
 
 def _config_schema(values: dict[str, Any]) -> vol.Schema:
+    """Return the advanced source-selector form."""
     current = normalize_config(values)
     return vol.Schema(
         {
@@ -78,10 +104,42 @@ def _config_schema(values: dict[str, Any]) -> vol.Schema:
     )
 
 
+def _location_schema(default: str | None = None) -> vol.Schema:
+    options = location_options()
+    options.append((ADVANCED_LOCATION_ID, "고급 수동 설정 / Advanced manual setup"))
+    key = (
+        vol.Required(CONF_LOCATION_ID, default=default)
+        if default
+        else vol.Required(CONF_LOCATION_ID)
+    )
+    return vol.Schema({key: _selector(options)})
+
+
+def _station_schema(
+    stations: tuple[str, ...], default: str | None = None
+) -> vol.Schema:
+    selected = default if default in stations else stations[0]
+    return vol.Schema(
+        {
+            vol.Required(CONF_WEATHERI_AIR_STATION, default=selected): _selector(
+                [(station, station) for station in stations]
+            )
+        }
+    )
+
+
+def _advanced_values(values: dict[str, Any]) -> dict[str, str]:
+    return {CONF_LOCATION_ID: ADVANCED_LOCATION_ID, **normalize_config(values)}
+
+
 class WeatherFusionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure the singleton Korea Weather Fusion helper."""
 
-    VERSION = 2
+    VERSION = 3
+
+    def __init__(self) -> None:
+        self._guided: GuidedSetup | None = None
+        self._selected_station: str | None = None
 
     @staticmethod
     @callback
@@ -92,40 +150,167 @@ class WeatherFusionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create a configured Korea Weather Fusion entry."""
+        """Choose a guided catalog location or advanced setup."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            location_id = str(user_input[CONF_LOCATION_ID])
+            if location_id == ADVANCED_LOCATION_ID:
+                return await self.async_step_advanced()
+            try:
+                self._guided = await async_prepare_guided_setup(self.hass, location_id)
+            except GuidedSetupError as err:
+                errors["base"] = err.translation_key
+            else:
+                return await self.async_step_air_station()
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_location_schema(),
+            errors=errors,
+        )
+
+    async def async_step_air_station(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Choose and validate a Weatheri air station."""
+        if self._guided is None:
+            return self.async_abort(reason="unknown")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            station = str(user_input[CONF_WEATHERI_AIR_STATION])
+            self._selected_station = station
+            if station not in self._guided.stations:
+                errors[CONF_WEATHERI_AIR_STATION] = "invalid_station"
+            else:
+                try:
+                    values = await async_finalize_guided_values(
+                        self.hass, self._guided, station
+                    )
+                except GuidedSetupError as err:
+                    errors["base"] = err.translation_key
+                else:
+                    validation_errors = await async_validate_guided_setup(
+                        self.hass,
+                        values,
+                        weatheri_air_html=self._guided.weatheri_air_html,
+                    )
+                    if validation_errors:
+                        errors["base"] = next(iter(validation_errors.values()))
+                    else:
+                        return self.async_create_entry(
+                            title="Korea Weather Fusion", data=values
+                        )
+        return self.async_show_form(
+            step_id="air_station",
+            data_schema=_station_schema(self._guided.stations, self._selected_station),
+            errors=errors,
+            description_placeholders={
+                "location": self._guided.location_label,
+                "kma_location": self._guided.kma_location_label,
+            },
+        )
+
+    async def async_step_advanced(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Configure every source selector manually."""
+        errors: dict[str, str] = {}
         if user_input is not None:
             if not (errors := _input_errors(user_input)):
                 return self.async_create_entry(
-                    title="Korea Weather Fusion", data=normalize_config(user_input)
+                    title="Korea Weather Fusion",
+                    data=_advanced_values(user_input),
                 )
-        else:
-            errors = {}
         return self.async_show_form(
-            step_id="user",
+            step_id="advanced",
             data_schema=_config_schema(user_input or {}),
             errors=errors,
         )
 
 
 class WeatherFusionOptionsFlow(config_entries.OptionsFlow):
-    """Edit source selectors and reload Korea Weather Fusion."""
+    """Edit a guided location or advanced source selectors."""
+
+    def __init__(self) -> None:
+        self._guided: GuidedSetup | None = None
+        self._selected_station: str | None = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Manage Korea Weather Fusion source options."""
+        """Choose a guided catalog location or advanced settings."""
         current = {**self.config_entry.data, **self.config_entry.options}
+        default = str(current.get(CONF_LOCATION_ID, ADVANCED_LOCATION_ID))
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            location_id = str(user_input[CONF_LOCATION_ID])
+            if location_id == ADVANCED_LOCATION_ID:
+                return await self.async_step_advanced()
+            try:
+                self._guided = await async_prepare_guided_setup(self.hass, location_id)
+            except GuidedSetupError as err:
+                errors["base"] = err.translation_key
+            else:
+                return await self.async_step_air_station()
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_location_schema(default),
+            errors=errors,
+        )
+
+    async def async_step_air_station(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Choose and validate a Weatheri air station."""
+        if self._guided is None:
+            return self.async_abort(reason="unknown")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            station = str(user_input[CONF_WEATHERI_AIR_STATION])
+            self._selected_station = station
+            if station not in self._guided.stations:
+                errors[CONF_WEATHERI_AIR_STATION] = "invalid_station"
+            else:
+                try:
+                    values = await async_finalize_guided_values(
+                        self.hass, self._guided, station
+                    )
+                except GuidedSetupError as err:
+                    errors["base"] = err.translation_key
+                else:
+                    validation_errors = await async_validate_guided_setup(
+                        self.hass,
+                        values,
+                        weatheri_air_html=self._guided.weatheri_air_html,
+                    )
+                    if validation_errors:
+                        errors["base"] = next(iter(validation_errors.values()))
+                    else:
+                        return self.async_create_entry(title="", data=values)
+        return self.async_show_form(
+            step_id="air_station",
+            data_schema=_station_schema(self._guided.stations, self._selected_station),
+            errors=errors,
+            description_placeholders={
+                "location": self._guided.location_label,
+                "kma_location": self._guided.kma_location_label,
+            },
+        )
+
+    async def async_step_advanced(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit every source selector manually."""
+        current = {**self.config_entry.data, **self.config_entry.options}
+        errors: dict[str, str] = {}
         if user_input is not None:
             if not (errors := _input_errors(user_input)):
                 return self.async_create_entry(
-                    title="", data=normalize_config(user_input)
+                    title="", data=_advanced_values(user_input)
                 )
-        else:
-            errors = {}
         return self.async_show_form(
-            step_id="init",
+            step_id="advanced",
             data_schema=_config_schema(user_input or current),
             errors=errors,
         )

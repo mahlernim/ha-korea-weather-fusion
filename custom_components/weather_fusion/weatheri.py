@@ -206,6 +206,21 @@ def parse_air(
     return WeatheriAir(station, source_updated_at, fetched_at, measurements)
 
 
+def discover_air_stations(html: str) -> list[str]:
+    """Return station labels from the Weatheri observation table."""
+    soup = BeautifulSoup(html, "html.parser")
+    table, header_row, _ = _find_air_table(soup)
+    rows = table.find_all("tr")
+    stations: list[str] = []
+    for row in rows[rows.index(header_row) + 1 :]:
+        cells = _row_cells(row)
+        if len(cells) >= 2 and cells[0] and cells[0] not in stations:
+            stations.append(cells[0])
+    if not stations:
+        raise WeatheriError("No air-quality stations were found")
+    return stations
+
+
 def _summary_dates(table: Tag, reference: date) -> list[date]:
     dates: list[date] = []
     for month_text, day_text in _DATE_PATTERN.findall(table.get_text(" ", strip=True)):

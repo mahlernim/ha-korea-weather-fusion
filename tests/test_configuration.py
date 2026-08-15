@@ -11,9 +11,16 @@ import pytest
 import voluptuous as vol
 from voluptuous_serialize import convert
 
-from custom_components.weather_fusion.config_flow import _config_schema, _input_errors
+from custom_components.weather_fusion.config_flow import (
+    _config_schema,
+    _input_errors,
+    _location_schema,
+    _station_schema,
+)
 from custom_components.weather_fusion.configuration import (
+    ADVANCED_LOCATION_ID,
     CONF_KMA_CODE,
+    CONF_LOCATION_ID,
     CONF_NAVER_AIR_QUERY,
     CONF_NAVER_WEATHER_QUERY,
     CONF_WEATHERI_AIR_REGION_CODE,
@@ -79,6 +86,22 @@ def test_config_schema_is_serializable_by_home_assistant() -> None:
     serialized = convert(_config_schema(TEST_CONFIG))
     assert len(serialized) == 8
     assert {field["name"] for field in serialized} == set(TEST_CONFIG)
+
+
+def test_guided_location_and_station_schemas_validate_catalog_choices() -> None:
+    assert _location_schema()({CONF_LOCATION_ID: "1101010100"}) == {
+        CONF_LOCATION_ID: "1101010100"
+    }
+    assert _location_schema()({CONF_LOCATION_ID: ADVANCED_LOCATION_ID}) == {
+        CONF_LOCATION_ID: ADVANCED_LOCATION_ID
+    }
+    with pytest.raises(vol.Invalid):
+        _location_schema()({CONF_LOCATION_ID: "not-in-the-catalog"})
+
+    station_schema = _station_schema(("중구", "해운대구"), "해운대구")
+    assert station_schema({}) == {CONF_WEATHERI_AIR_STATION: "해운대구"}
+    with pytest.raises(vol.Invalid):
+        station_schema({CONF_WEATHERI_AIR_STATION: "없는 측정소"})
 
 
 def test_weatheri_cache_is_scoped_to_configured_location() -> None:

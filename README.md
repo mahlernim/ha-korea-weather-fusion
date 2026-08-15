@@ -21,12 +21,12 @@ Korea Weather Fusion은 대한민국 날씨와 대기질 정보를 Home Assistan
 - 한 소스에 일시적인 문제가 생겨도 다른 정상 소스의 값은 계속 사용합니다.
 - 웨더아이의 마지막 정상 정보는 Home Assistant 재시작 후에도 유효 시간 동안
   사용할 수 있습니다.
-- 모든 지역 정보는 설정 화면에서 입력하고 나중에 변경할 수 있습니다.
+- 한국 예보 지역과 가까운 대기 측정소를 목록에서 선택하면 세 소스의 설정을
+  자동으로 찾고 확인합니다.
 
 ### 요구 사항
 
 - Home Assistant 2026.3.0 이상
-- 대한민국 지역에 해당하는 각 제공처의 지역 식별자
 - 기상청, 네이버, 웨더아이 웹사이트에 접속할 수 있는 네트워크
 
 API 키나 별도 계정은 필요하지 않습니다.
@@ -53,19 +53,14 @@ API 키나 별도 계정은 필요하지 않습니다.
 
 ![Korea Weather Fusion 설정 예시](docs/images/setup-ko.png)
 
-설정 화면에서 다음 값을 입력합니다. 아래 검색어와 숫자는 형식을 보여 주는
-일반적인 예시이며, 실제로 사용할 지역에 맞게 바꾸어야 합니다.
+1. 목록에서 모니터링할 한국 예보 지역을 선택합니다.
+2. 해당 지역에서 사용할 수 있는 웨더아이 대기 측정소를 선택합니다.
+3. 통합구성요소가 기상청 지역, 네이버 검색 지역, 웨더아이 예보와 대기질을
+   자동으로 연결하고 필수 응답을 확인한 뒤 설정을 저장합니다.
 
-| 항목 | 입력 내용 | 예시 |
-|---|---|---|
-| 기상청 지역 코드 | weather.go.kr 현재 날씨 주소의 `code` 값 | `1111051500` |
-| 네이버 날씨 검색어 | 네이버 날씨 검색에 사용할 지역명 | `서울 종로구 날씨` |
-| 네이버 대기질 검색어 | 지역명과 미세먼지를 포함한 검색어 | `서울 종로구 미세먼지` |
-| 웨더아이 예보 RID | 지역 예보 주소의 `rid` 값 | `1100000000` |
-| 웨더아이 예보 그룹 | 같은 주소의 `k` 값 | `1` |
-| 웨더아이 지역명 | 예보 페이지에 표시되는 지역명 | `서울` |
-| 웨더아이 대기 권역 코드 | 대기질 주소의 `a` 값 | `01` |
-| 웨더아이 대기 측정소 | 대기질 표에 표시되는 측정소명 | `종로구` |
+지역 코드나 검색어를 직접 찾을 필요는 없습니다. 목록에 없는 지역이나 특별한
+설정이 필요한 경우에만 **고급 수동 설정**을 선택해 기존의 세부 식별자를 직접
+입력할 수 있습니다.
 
 설치 후 지역을 바꾸려면 **설정 > 기기 및 서비스 > Korea Weather Fusion > 구성**을
 선택합니다. 지역을 변경해도 기존 Korea Weather Fusion 엔티티 ID는 유지됩니다.
@@ -79,9 +74,13 @@ API 키나 별도 계정은 필요하지 않습니다.
 
 ### 문제 해결
 
-- 값이 `사용할 수 없음`이면 인터넷 연결과 입력한 지역 식별자를 확인하세요.
+- 설정 중 오류가 표시되면 해당 제공처가 일시적으로 응답하지 않는지 확인한 뒤
+  다시 시도하세요. 불완전한 설정은 저장되지 않습니다.
+- 값이 `사용할 수 없음`이면 인터넷 연결과 선택한 지역을 확인하세요.
 - 한 제공처의 값만 없으면 해당 제공처의 지역 페이지에서 같은 정보가 보이는지
   확인하세요.
+- 네이버가 일부 지역 검색에서 미세먼지 카드를 제공하지 않을 수 있습니다. 이
+  경우에도 기상청과 웨더아이 대기질을 이용한 통합 값은 계속 제공됩니다.
 - 지역 설정을 수정한 뒤에는 통합구성요소가 자동으로 다시 로드됩니다.
 - 웹 제공처의 화면 구조가 바뀌면 일부 값이 일시적으로 제공되지 않을 수
   있습니다. 지속되는 문제는 GitHub Issues에 보고해 주세요.
@@ -112,12 +111,12 @@ Weatheri into a practical set of everyday entities.
 - Exposes source-specific KMA, Naver, and Weatheri diagnostics.
 - Keeps healthy sources usable when another source temporarily fails.
 - Retains valid Weatheri data across Home Assistant restarts.
-- Lets users enter and later change every location selector in the UI.
+- Offers guided Korean location and nearby air-station dropdowns, then resolves
+  and validates all three providers automatically.
 
 ### Requirements
 
 - Home Assistant 2026.3.0 or newer
-- Location identifiers for a supported location in South Korea
 - Network access to KMA, Naver, and Weatheri websites
 
 No API key or separate account is required.
@@ -142,19 +141,26 @@ under your Home Assistant configuration directory, then restart Home Assistant.
 
 ![Korea Weather Fusion setup example](docs/images/setup-ko.png)
 
-The form requests a KMA location code, natural-language Naver weather and air
-queries, and the Weatheri forecast and air-quality identifiers. The values in
-the screenshot and Korean table above are generic examples; replace them with
-the selectors for the location you want to monitor.
+Choose a Korean forecast location, then choose a nearby Weatheri air-quality
+station. The integration automatically resolves the KMA area and Naver queries,
+checks the required live responses from all three providers, and saves the setup
+only when it is usable. No location codes or search queries are normally required.
+
+Choose **Advanced manual setup** only for an unsupported location or a special
+configuration that needs explicit provider selectors.
 
 You can later change them from **Settings > Devices & services > Korea Weather Fusion
 > Configure**. Existing Korea Weather Fusion entity IDs remain stable.
 
 ### Troubleshooting
 
-- If values are unavailable, check network access and every location selector.
+- If setup reports an error, retry after checking whether the named provider is
+  temporarily unavailable. An incomplete setup is not saved.
+- If values are unavailable later, check network access and the selected location.
 - If only one source is missing, confirm that source's public location page
   still shows the requested information.
+- Naver does not expose its PM card for every local search. KMA and Weatheri air
+  quality remain available to the fused entities when that happens.
 - Source websites can change their page structure or temporarily limit access.
   Report persistent problems through GitHub Issues.
 

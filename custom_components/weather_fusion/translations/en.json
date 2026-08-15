@@ -3,8 +3,22 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configure weather sources",
-        "description": "Enter the location selectors used by KMA, Naver, and Weatheri.",
+        "title": "Choose a location",
+        "description": "Select a Korean forecast location. Korea Weather Fusion will resolve and validate the KMA, Naver, and Weatheri settings automatically.",
+        "data": {
+          "location_id": "Forecast location"
+        }
+      },
+      "air_station": {
+        "title": "Choose an air-quality station",
+        "description": "Location: {location}. Resolved KMA area: {kma_location}. Choose the Weatheri monitoring station to validate all three sources.",
+        "data": {
+          "weatheri_air_station": "Weatheri air station"
+        }
+      },
+      "advanced": {
+        "title": "Advanced manual setup",
+        "description": "Enter every source selector manually. Use this only for unsupported locations or troubleshooting.",
         "data": {
           "kma_code": "KMA location code",
           "naver_weather_query": "Naver weather query",
@@ -17,14 +31,45 @@
         }
       }
     },
-    "abort": {"already_configured": "Korea Weather Fusion is already configured."},
-    "error": {"invalid_code": "Enter digits only."}
+    "abort": {
+      "already_configured": "Korea Weather Fusion is already configured.",
+      "unknown": "The setup flow could not be resumed. Start again."
+    },
+    "error": {
+      "invalid_code": "Enter digits only.",
+      "invalid_location": "Choose a supported forecast location.",
+      "invalid_station": "Choose a station from the current list.",
+      "cannot_connect_kma": "Could not load KMA locations. Check the connection and try again.",
+      "cannot_resolve_kma": "This location could not be matched to a KMA area. Use Advanced manual setup.",
+      "cannot_connect_weatheri": "Could not load Weatheri forecast or station data. Try again.",
+      "invalid_weatheri_data": "Weatheri returned incomplete or unexpected setup data.",
+      "cannot_connect_naver_weather": "Could not validate Naver Weather. Try again.",
+      "cannot_connect_naver_air": "Could not validate Naver air quality. Try again.",
+      "invalid_kma_data": "KMA did not return valid weather data for the resolved area.",
+      "invalid_naver_weather_data": "Naver did not return valid weather data for this location.",
+      "invalid_naver_air_data": "Naver did not return valid air-quality data for this location.",
+      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station."
+    }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Weather source settings",
-        "description": "Changing a selector reloads Korea Weather Fusion. Existing entity IDs are preserved.",
+        "title": "Change location",
+        "description": "Select a catalog location or choose Advanced manual setup. Existing entity IDs are preserved.",
+        "data": {
+          "location_id": "Forecast location"
+        }
+      },
+      "air_station": {
+        "title": "Choose an air-quality station",
+        "description": "Location: {location}. Resolved KMA area: {kma_location}. Choose the Weatheri monitoring station to validate all three sources.",
+        "data": {
+          "weatheri_air_station": "Weatheri air station"
+        }
+      },
+      "advanced": {
+        "title": "Advanced manual settings",
+        "description": "Edit every source selector manually. Existing entity IDs are preserved.",
         "data": {
           "kma_code": "KMA location code",
           "naver_weather_query": "Naver weather query",
@@ -36,6 +81,21 @@
           "weatheri_air_station": "Weatheri air station"
         }
       }
+    },
+    "error": {
+      "invalid_code": "Enter digits only.",
+      "invalid_location": "Choose a supported forecast location.",
+      "invalid_station": "Choose a station from the current list.",
+      "cannot_connect_kma": "Could not load KMA locations. Check the connection and try again.",
+      "cannot_resolve_kma": "This location could not be matched to a KMA area. Use Advanced manual setup.",
+      "cannot_connect_weatheri": "Could not load Weatheri forecast or station data. Try again.",
+      "invalid_weatheri_data": "Weatheri returned incomplete or unexpected setup data.",
+      "cannot_connect_naver_weather": "Could not validate Naver Weather. Try again.",
+      "cannot_connect_naver_air": "Could not validate Naver air quality. Try again.",
+      "invalid_kma_data": "KMA did not return valid weather data for the resolved area.",
+      "invalid_naver_weather_data": "Naver did not return valid weather data for this location.",
+      "invalid_naver_air_data": "Naver did not return valid air-quality data for this location.",
+      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station."
     }
   },
   "entity": {
