@@ -208,9 +208,9 @@ Choose **Advanced manual setup** only for an unsupported location or a special
 configuration that needs explicit provider selectors. Manual setup uses the same
 live validation and review screen.
 
-You can later change them from **Settings > Devices & services > Korea Weather Fusion
-> Configure**, or use the integration entry's **Reconfigure** menu. The saved
-station remains selected, and existing entity IDs stay stable.
+Use the integration entry's **Reconfigure** menu to change location later. The
+existing **Configure** action also opens location setup. The saved station remains
+selected, and existing entity IDs stay stable.
 
 ### Weather cards and source status
 
