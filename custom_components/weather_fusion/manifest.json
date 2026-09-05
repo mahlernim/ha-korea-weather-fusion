@@ -3,10 +3,10 @@
   "name": "Korea Weather Fusion",
   "codeowners": ["@mahlernim"],
   "config_flow": true,
-  "documentation": "https://github.com/mahlernim/korea-weather-fusion",
+  "documentation": "https://github.com/mahlernim/ha-korea-weather-fusion",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/mahlernim/korea-weather-fusion/issues",
+  "issue_tracker": "https://github.com/mahlernim/ha-korea-weather-fusion/issues",
   "requirements": ["beautifulsoup4>=4.12.2,<5"],
   "version": "0.8.0"
 }
