@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import voluptuous as vol
-from voluptuous_serialize import convert
+from homeassistant.helpers.data_entry_flow import FlowManagerIndexView
 
 from custom_components.weather_fusion.config_flow import (
     _config_schema,
@@ -83,7 +83,9 @@ def test_normalize_and_schema_reject_blank_or_non_numeric_codes() -> None:
 
 
 def test_config_schema_is_serializable_by_home_assistant() -> None:
-    serialized = convert(_config_schema(TEST_CONFIG))
+    serialized = FlowManagerIndexView(None)._prepare_result_json(
+        {"type": "form", "data_schema": _config_schema(TEST_CONFIG)}
+    )["data_schema"]
     assert len(serialized) == 8
     assert {field["name"] for field in serialized} == set(TEST_CONFIG)
 

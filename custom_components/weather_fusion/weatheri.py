@@ -202,7 +202,10 @@ def parse_air(
     measurements: dict[str, float | None] = {}
     for key in AIR_KEYS:
         raw = target[columns[key]] if columns[key] < len(target) else "-"
-        measurements[key] = _parse_air_value(key, raw)
+        try:
+            measurements[key] = _parse_air_value(key, raw)
+        except WeatheriError:
+            measurements[key] = None
     return WeatheriAir(station, source_updated_at, fetched_at, measurements)
 
 
@@ -229,8 +232,10 @@ def _summary_dates(table: Tag, reference: date) -> list[date]:
         for year in (reference.year - 1, reference.year, reference.year + 1):
             try:
                 candidates.append(date(year, month, day))
-            except ValueError as err:
-                raise WeatheriError(f"Invalid forecast date {month}/{day}") from err
+            except ValueError:
+                continue
+        if not candidates:
+            raise WeatheriError(f"Invalid forecast date {month}/{day}")
         parsed = min(candidates, key=lambda item: abs((item - reference).days))
         if not dates or dates[-1] != parsed:
             dates.append(parsed)
@@ -263,7 +268,8 @@ def _find_air_table(soup: BeautifulSoup) -> tuple[Tag, Tag, dict[str, int]]:
             for alias in aliases:
                 matches = [index for index, cell in enumerate(cells) if alias in cell]
                 if matches:
-                    columns[key] = matches[0]
+                    # Weatheri spans an icon cell and a value cell under one header.
+                    columns[key] = matches[-1]
                     break
         if set(columns) == set(AIR_KEYS) and len(set(columns.values())) == len(
             AIR_KEYS
@@ -300,8 +306,14 @@ def _parse_air_value(key: str, raw: str) -> float | None:
 
 
 def _row_cells(row: Tag) -> list[str]:
-    values = [
-        cell.get_text(" ", strip=True)
-        for cell in row.find_all(["th", "td"], recursive=False)
-    ]
-    return [value for value in values if value]
+    """Expand merged headers into the physical grid, retaining empty value cells."""
+    values = []
+    for cell in row.find_all(["th", "td"], recursive=False):
+        try:
+            span = int(cell.get("colspan", 1))
+        except (ValueError, TypeError):
+            return []
+        if not 1 <= span <= 16:
+            return []
+        values.extend([cell.get_text(" ", strip=True)] * span)
+    return values

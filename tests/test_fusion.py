@@ -16,7 +16,12 @@ from custom_components.weather_fusion.fusion import (
     WeatherFusionManager,
 )
 from custom_components.weather_fusion.naver import parse_air, parse_weather
-from custom_components.weather_fusion.source import SourceSnapshot
+from custom_components.weather_fusion.source import (
+    KOREA_TZ,
+    DailyForecast,
+    HourlyForecast,
+    SourceSnapshot,
+)
 from custom_components.weather_fusion.weatheri import (
     WeatheriAir,
     WeatheriError,
@@ -74,13 +79,26 @@ def manager(
     fusion = WeatherFusionManager(
         SimpleNamespace(), weatheri_store=SimpleNamespace(), settings=TEST_SETTINGS
     )
-    naver_reported = dt_util.utcnow() - timedelta(minutes=naver_age_minutes)
+    now = dt_util.utcnow().astimezone(KOREA_TZ)
+    naver_reported = now - timedelta(minutes=naver_age_minutes)
     fusion._naver_snapshots = {
         "naver_weather": SourceSnapshot(
             group="naver_weather",
             last_reported=naver_reported,
             numeric=NAVER_WEATHER_NUMERIC,
             text=NAVER_WEATHER_TEXT,
+            daily=(
+                DailyForecast(now.date(), 28, 18),
+                DailyForecast(now.date() + timedelta(days=1), 29, 19),
+            ),
+            hourly=tuple(
+                HourlyForecast(
+                    now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=h),
+                    NAVER_WEATHER_TEXT[f"forecast_{h}h"],
+                    20,
+                )
+                for h in (3, 6, 9, 12)
+            ),
         ),
         "naver_air": SourceSnapshot(
             group="naver_air",
@@ -95,7 +113,7 @@ def manager(
             key: KmaSample(value=value, last_reported=reported)
             for key, value in kma_values.items()
         }
-    now = dt_util.now()
+    now = dt_util.utcnow().astimezone(KOREA_TZ)
     fusion._weatheri_forecast = WeatheriForecast(
         "서울", now.date(), now, 27.0, 17.0, 30.0, 20.0
     )
@@ -225,6 +243,16 @@ def test_engine_fuses_snapshots_without_home_assistant_entity_ids() -> None:
                     "today_high": 28.0,
                 },
                 text={"forecast_3h": "맑음"},
+                daily=(DailyForecast(reported.astimezone(KOREA_TZ).date(), 28, 18),),
+                hourly=(
+                    HourlyForecast(
+                        reported.astimezone(KOREA_TZ).replace(
+                            minute=0, second=0, microsecond=0
+                        )
+                        + timedelta(hours=3),
+                        "맑음",
+                    ),
+                ),
             ),
             "weatheri_air": SourceSnapshot(
                 group="weatheri_air",
@@ -288,7 +316,7 @@ def test_naver_parsers_preserve_existing_multiscrape_semantics() -> None:
     numeric, text, errors = parse_weather(html)
     assert errors == {}
     assert numeric == {
-        "temperature": 31.0,
+        "temperature": 31.8,
         "humidity": 51.0,
         "wind_speed": 2.4,
         "today_high": 30.0,
@@ -312,7 +340,7 @@ def test_naver_optional_selector_failure_is_field_scoped() -> None:
         '<div class="temperature_text"><strong>현재 온도 31.8°</strong>'
         "</div></div></div>"
     )
-    assert numeric == {"temperature": 31.0}
+    assert numeric == {"temperature": 31.8}
     assert text == {}
     assert errors["uv"] == "missing_selector:uv"
     assert errors["forecast_12h"] == "missing_selector:forecast_12h"
