@@ -4,6 +4,8 @@
 
 [Home Assistant weather-card reference](https://www.home-assistant.io/dashboards/weather-forecast/)
 
+![기본 날씨·대기질 카드 / Built-in weather and air-quality cards](images/overview-ko.png)
+
 ## 한국어
 
 대시보드 편집 화면에서 **날씨 예보** 카드를 추가하고 Korea Weather Fusion의
@@ -14,6 +16,32 @@
 카드 아래에 통합 미세먼지·초미세먼지 센서와 소스 상태 센서를 타일 또는 엔티티
 카드로 배치하면 일상적으로 필요한 정보를 한 화면에서 볼 수 있습니다. 원본
 제공처 센서는 별도 진단 화면에 두는 구성을 권장합니다.
+
+스크린샷처럼 카드 하나로 묶으려면 **수동** 카드에 아래 YAML을 붙여 넣으세요.
+각 `entity`를 실제 엔티티 ID로 바꾸세요. 표시 이름은 원하는 지역명으로 바꿀 수
+있습니다.
+
+```yaml
+type: vertical-stack
+cards:
+  - type: weather-forecast
+    entity: weather.example
+    name: 서울
+    show_current: true
+    show_forecast: true
+    forecast_type: hourly
+  - type: horizontal-stack
+    cards:
+      - type: tile
+        entity: sensor.example_pm10
+        name: 미세먼지 PM10
+      - type: tile
+        entity: sensor.example_pm25
+        name: 초미세먼지 PM2.5
+  - type: tile
+    entity: sensor.example_source_status
+    name: 소스 상태
+```
 
 아래는 기본 날씨 카드의 YAML 예시입니다. `weather.example`을 실제 날씨 엔티티
 ID로 바꾸세요. 사용자 지정 카드나 추가 프런트엔드 설치는 필요하지 않습니다.
@@ -42,3 +70,8 @@ entities cards. Keep provider-specific sensors in a separate diagnostic view.
 The YAML above uses a built-in card. Replace `weather.example` with your weather
 entity ID; no custom frontend is required. Set `forecast_type: daily` to show the
 daily range. Korea forecast times may display in the viewer's local timezone.
+
+To reproduce the screenshot, paste the first `vertical-stack` example into a
+**Manual** card. Replace every `entity` with the corresponding weather, PM10,
+PM2.5 and source-status entity ID. Change the display names to your preferred
+language and location.
