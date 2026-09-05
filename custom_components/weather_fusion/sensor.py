@@ -12,7 +12,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
-    UnitOfDensity,
     UnitOfSpeed,
     UnitOfTemperature,
 )
@@ -22,6 +21,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .entity import WeatherFusionEntity
 from .fusion import WeatherFusionManager
+
+# UnitOfDensity was added after our minimum supported HA version.
+try:
+    from homeassistant.const import UnitOfDensity
+
+    PM_UNIT = UnitOfDensity.MICROGRAMS_PER_CUBIC_METER
+except ImportError:
+    from homeassistant.const import CONCENTRATION_MICROGRAMS_PER_CUBIC_METER as PM_UNIT
 
 NUMERIC_SENSORS = (
     SensorEntityDescription(
@@ -51,7 +58,7 @@ NUMERIC_SENSORS = (
         key="pm10",
         translation_key="pm10",
         device_class=SensorDeviceClass.PM10,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
     ),
@@ -59,7 +66,7 @@ NUMERIC_SENSORS = (
         key="pm25",
         translation_key="pm25",
         device_class=SensorDeviceClass.PM25,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
     ),
@@ -125,7 +132,7 @@ KMA_SENSORS = (
         key="kma_pm10",
         translation_key="kma_pm10",
         device_class=SensorDeviceClass.PM10,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
     ),
@@ -133,7 +140,7 @@ KMA_SENSORS = (
         key="kma_pm25",
         translation_key="kma_pm25",
         device_class=SensorDeviceClass.PM25,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
     ),
@@ -171,14 +178,14 @@ NAVER_NUMERIC_SENSORS = (
         key="naver_pm10",
         translation_key="naver_pm10",
         device_class=SensorDeviceClass.PM10,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="naver_pm25",
         translation_key="naver_pm25",
         device_class=SensorDeviceClass.PM25,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     *(
@@ -220,14 +227,14 @@ WEATHERI_NUMERIC_SENSORS = (
         key="weatheri_pm10",
         translation_key="weatheri_pm10",
         device_class=SensorDeviceClass.PM10,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="weatheri_pm25",
         translation_key="weatheri_pm25",
         device_class=SensorDeviceClass.PM25,
-        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=PM_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     *(
@@ -257,7 +264,8 @@ async def async_setup_entry(
     """Set up representative sensors."""
     manager: WeatherFusionManager = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        [WeatherFusionSensor(manager, item) for item in NUMERIC_SENSORS]
+        [WeatherFusionStatus(manager)]
+        + [WeatherFusionSensor(manager, item) for item in NUMERIC_SENSORS]
         + [WeatherFusionKmaSensor(manager, item) for item in KMA_SENSORS]
         + [WeatherFusionForecastSensor(manager, item) for item in FORECAST_SENSORS]
         + [
@@ -270,6 +278,27 @@ async def async_setup_entry(
             for item in WEATHERI_NUMERIC_SENSORS
         ]
     )
+
+
+class WeatherFusionStatus(WeatherFusionEntity, SensorEntity):
+    """Readable source health alongside the existing binary health sensors."""
+
+    _attr_unique_id = f"{DOMAIN}_source_status"
+    _attr_translation_key = "source_status"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["fresh", "cached", "degraded", "unavailable"]
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self):
+        return self.manager.status()
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "missing_metrics": self.manager.health()[1]["missing_metrics"],
+            "missing_forecasts": self.manager.forecast_health()[1]["missing_forecasts"],
+        }
 
 
 class WeatherFusionSensor(WeatherFusionEntity, SensorEntity):
@@ -328,6 +357,8 @@ class WeatherFusionForecastSensor(WeatherFusionEntity, SensorEntity):
 
 class WeatherFusionKmaSensor(WeatherFusionEntity, SensorEntity):
     """One raw direct weather.go.kr metric."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
         self, manager: WeatherFusionManager, description: SensorEntityDescription

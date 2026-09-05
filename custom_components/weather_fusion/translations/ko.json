@@ -3,15 +3,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "지역 선택",
-        "description": "한국 예보 지역을 선택하세요. 기상청, 네이버, 웨더아이 설정을 자동으로 찾고 실제 데이터를 확인합니다.",
+        "title": "날씨 지역 선택",
+        "description": "시·도를 선택한 뒤 예보 지역을 선택하세요. 대기 측정소는 날씨 지역과 별도로 설정합니다.",
         "data": {
-          "location_id": "예보 지역"
+          "region": "시·도 또는 수동 설정"
         }
       },
       "air_station": {
         "title": "대기 측정소 선택",
-        "description": "선택 지역: {location}. 기상청 연결 지역: {kma_location}. 웨더아이 측정소를 선택하면 세 소스를 모두 확인합니다.",
+        "description": "날씨 지역: {location}. 기상청 지역: {kma_location}. 측정소를 바꾸어도 날씨 지역은 변경되지 않습니다.",
         "data": {
           "weatheri_air_station": "웨더아이 대기 측정소"
         }
@@ -29,14 +29,37 @@
           "weatheri_air_region_code": "웨더아이 대기 권역 코드",
           "weatheri_air_station": "웨더아이 대기 측정소"
         }
+      },
+      "location": {
+        "title": "예보 지역",
+        "description": "날씨를 확인할 지역을 선택하세요. 검색하여 목록을 좁힐 수 있습니다.",
+        "data": {
+          "location_id": "예보 지역"
+        }
+      },
+      "review": {
+        "title": "지역 및 소스 확인",
+        "description": "선택 지역: {location}\n\n기상청 지역: {kma_location}\n네이버 날씨: {naver_query}\n웨더아이 예보 지역: {weatheri_location}\n대기 측정소: {station}\n\n**데이터 확인**\n- 기상청: {kma}\n- 네이버 날씨: {naver_weather}\n- 네이버 대기질 (선택): {naver_air}\n- 웨더아이 예보: {weatheri_forecast}\n- 웨더아이 대기질: {weatheri_air}\n\n제한 모드에서는 사용할 수 있는 데이터만 제공하며, 소스가 복구되면 자동으로 다시 사용합니다.",
+        "data": {
+          "action": "다음 작업",
+          "allow_limited": "누락된 데이터를 확인했으며 제한 모드로 저장합니다"
+        }
+      },
+      "reconfigure": {
+        "title": "날씨 지역 선택",
+        "description": "시·도를 선택한 뒤 예보 지역을 선택하세요. 대기 측정소는 날씨 지역과 별도로 설정합니다.",
+        "data": {
+          "region": "시·도 또는 수동 설정"
+        }
       }
     },
     "abort": {
       "already_configured": "한국 날씨 통합이 이미 구성되어 있습니다.",
-      "unknown": "설정 흐름을 계속할 수 없습니다. 처음부터 다시 시작하세요."
+      "unknown": "설정 흐름을 계속할 수 없습니다. 처음부터 다시 시작하세요.",
+      "reconfigure_successful": "지역 설정을 변경했습니다."
     },
     "error": {
-      "invalid_code": "숫자만 입력하세요.",
+      "invalid_code": "기상청 코드와 예보 RID는 10자리, 그룹·권역 코드는 1~2자리 숫자여야 합니다.",
       "invalid_location": "지원되는 예보 지역을 선택하세요.",
       "invalid_station": "현재 목록에서 측정소를 선택하세요.",
       "cannot_connect_kma": "기상청 지역 목록을 불러올 수 없습니다. 연결을 확인하고 다시 시도하세요.",
@@ -48,21 +71,24 @@
       "invalid_kma_data": "연결된 지역에서 유효한 기상청 날씨 데이터를 받지 못했습니다.",
       "invalid_naver_weather_data": "이 지역에서 유효한 네이버 날씨 데이터를 받지 못했습니다.",
       "invalid_naver_air_data": "이 지역에서 유효한 네이버 대기질 데이터를 받지 못했습니다.",
-      "invalid_weatheri_air_data": "선택한 측정소에서 유효한 웨더아이 대기질 데이터를 받지 못했습니다."
+      "invalid_weatheri_air_data": "선택한 측정소에서 유효한 웨더아이 대기질 데이터를 받지 못했습니다.",
+      "limited_confirmation": "데이터 누락을 확인하고 제한 모드 저장에 동의하거나 다시 확인하세요.",
+      "no_usable_sources": "사용할 수 있는 데이터가 없습니다. 지역을 수정하거나 다시 확인하세요.",
+      "checks_refreshed": "확인 결과를 갱신했습니다. 변경된 결과를 확인한 뒤 저장하세요."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "지역 변경",
-        "description": "목록에서 지역을 선택하거나 고급 수동 설정을 선택하세요. 기존 엔티티 ID는 유지됩니다.",
+        "title": "날씨 지역 선택",
+        "description": "시·도를 선택한 뒤 예보 지역을 선택하세요. 대기 측정소는 날씨 지역과 별도로 설정합니다.",
         "data": {
-          "location_id": "예보 지역"
+          "region": "시·도 또는 수동 설정"
         }
       },
       "air_station": {
         "title": "대기 측정소 선택",
-        "description": "선택 지역: {location}. 기상청 연결 지역: {kma_location}. 웨더아이 측정소를 선택하면 세 소스를 모두 확인합니다.",
+        "description": "날씨 지역: {location}. 기상청 지역: {kma_location}. 측정소를 바꾸어도 날씨 지역은 변경되지 않습니다.",
         "data": {
           "weatheri_air_station": "웨더아이 대기 측정소"
         }
@@ -80,10 +106,25 @@
           "weatheri_air_region_code": "웨더아이 대기 권역 코드",
           "weatheri_air_station": "웨더아이 대기 측정소"
         }
+      },
+      "location": {
+        "title": "예보 지역",
+        "description": "날씨를 확인할 지역을 선택하세요. 검색하여 목록을 좁힐 수 있습니다.",
+        "data": {
+          "location_id": "예보 지역"
+        }
+      },
+      "review": {
+        "title": "지역 및 소스 확인",
+        "description": "선택 지역: {location}\n\n기상청 지역: {kma_location}\n네이버 날씨: {naver_query}\n웨더아이 예보 지역: {weatheri_location}\n대기 측정소: {station}\n\n**데이터 확인**\n- 기상청: {kma}\n- 네이버 날씨: {naver_weather}\n- 네이버 대기질 (선택): {naver_air}\n- 웨더아이 예보: {weatheri_forecast}\n- 웨더아이 대기질: {weatheri_air}\n\n제한 모드에서는 사용할 수 있는 데이터만 제공하며, 소스가 복구되면 자동으로 다시 사용합니다.",
+        "data": {
+          "action": "다음 작업",
+          "allow_limited": "누락된 데이터를 확인했으며 제한 모드로 저장합니다"
+        }
       }
     },
     "error": {
-      "invalid_code": "숫자만 입력하세요.",
+      "invalid_code": "기상청 코드와 예보 RID는 10자리, 그룹·권역 코드는 1~2자리 숫자여야 합니다.",
       "invalid_location": "지원되는 예보 지역을 선택하세요.",
       "invalid_station": "현재 목록에서 측정소를 선택하세요.",
       "cannot_connect_kma": "기상청 지역 목록을 불러올 수 없습니다. 연결을 확인하고 다시 시도하세요.",
@@ -95,61 +136,183 @@
       "invalid_kma_data": "연결된 지역에서 유효한 기상청 날씨 데이터를 받지 못했습니다.",
       "invalid_naver_weather_data": "이 지역에서 유효한 네이버 날씨 데이터를 받지 못했습니다.",
       "invalid_naver_air_data": "이 지역에서 유효한 네이버 대기질 데이터를 받지 못했습니다.",
-      "invalid_weatheri_air_data": "선택한 측정소에서 유효한 웨더아이 대기질 데이터를 받지 못했습니다."
+      "invalid_weatheri_air_data": "선택한 측정소에서 유효한 웨더아이 대기질 데이터를 받지 못했습니다.",
+      "limited_confirmation": "데이터 누락을 확인하고 제한 모드 저장에 동의하거나 다시 확인하세요.",
+      "no_usable_sources": "사용할 수 있는 데이터가 없습니다. 지역을 수정하거나 다시 확인하세요.",
+      "checks_refreshed": "확인 결과를 갱신했습니다. 변경된 결과를 확인한 뒤 저장하세요."
     }
   },
   "entity": {
     "sensor": {
-      "temperature": {"name": "기온"},
-      "humidity": {"name": "습도"},
-      "wind_speed": {"name": "풍속"},
-      "pm10": {"name": "미세먼지"},
-      "pm25": {"name": "초미세먼지"},
-      "today_high": {"name": "오늘 최고기온"},
-      "today_low": {"name": "오늘 최저기온"},
-      "tomorrow_high": {"name": "내일 최고기온"},
-      "tomorrow_low": {"name": "내일 최저기온"},
-      "forecast_3h": {"name": "3시간 예보"},
-      "forecast_6h": {"name": "6시간 예보"},
-      "forecast_9h": {"name": "9시간 예보"},
-      "forecast_12h": {"name": "12시간 예보"},
-      "kma_temperature": {"name": "기상청 기온"},
-      "kma_humidity": {"name": "기상청 습도"},
-      "kma_wind_speed": {"name": "기상청 풍속"},
-      "kma_pm10": {"name": "기상청 미세먼지"},
-      "kma_pm25": {"name": "기상청 초미세먼지"},
-      "naver_temperature": {"name": "네이버 기온"},
-      "naver_humidity": {"name": "네이버 습도"},
-      "naver_wind_speed": {"name": "네이버 풍속"},
-      "naver_pm10": {"name": "네이버 미세먼지"},
-      "naver_pm25": {"name": "네이버 초미세먼지"},
-      "naver_today_high": {"name": "네이버 오늘 최고기온"},
-      "naver_today_low": {"name": "네이버 오늘 최저기온"},
-      "naver_tomorrow_high": {"name": "네이버 내일 최고기온"},
-      "naver_tomorrow_low": {"name": "네이버 내일 최저기온"},
-      "naver_uv": {"name": "네이버 자외선"},
-      "naver_wind_direction": {"name": "네이버 풍향"},
-      "naver_forecast_3h": {"name": "네이버 3시간 예보"},
-      "naver_forecast_6h": {"name": "네이버 6시간 예보"},
-      "naver_forecast_9h": {"name": "네이버 9시간 예보"},
-      "naver_forecast_12h": {"name": "네이버 12시간 예보"},
-      "weatheri_today_high": {"name": "웨더아이 오늘 최고기온"},
-      "weatheri_today_low": {"name": "웨더아이 오늘 최저기온"},
-      "weatheri_tomorrow_high": {"name": "웨더아이 내일 최고기온"},
-      "weatheri_tomorrow_low": {"name": "웨더아이 내일 최저기온"},
-      "weatheri_pm10": {"name": "웨더아이 미세먼지"},
-      "weatheri_pm25": {"name": "웨더아이 초미세먼지"},
-      "weatheri_ozone": {"name": "웨더아이 오존"},
-      "weatheri_nitrogen_dioxide": {"name": "웨더아이 이산화질소"},
-      "weatheri_carbon_monoxide": {"name": "웨더아이 일산화탄소"},
-      "weatheri_sulfur_dioxide": {"name": "웨더아이 아황산가스"},
-      "weatheri_aqi": {"name": "웨더아이 통합대기지수"}
+      "temperature": {
+        "name": "기온"
+      },
+      "humidity": {
+        "name": "습도"
+      },
+      "wind_speed": {
+        "name": "풍속"
+      },
+      "pm10": {
+        "name": "미세먼지"
+      },
+      "pm25": {
+        "name": "초미세먼지"
+      },
+      "today_high": {
+        "name": "오늘 최고기온"
+      },
+      "today_low": {
+        "name": "오늘 최저기온"
+      },
+      "tomorrow_high": {
+        "name": "내일 최고기온"
+      },
+      "tomorrow_low": {
+        "name": "내일 최저기온"
+      },
+      "forecast_3h": {
+        "name": "3시간 예보"
+      },
+      "forecast_6h": {
+        "name": "6시간 예보"
+      },
+      "forecast_9h": {
+        "name": "9시간 예보"
+      },
+      "forecast_12h": {
+        "name": "12시간 예보"
+      },
+      "kma_temperature": {
+        "name": "기상청 기온"
+      },
+      "kma_humidity": {
+        "name": "기상청 습도"
+      },
+      "kma_wind_speed": {
+        "name": "기상청 풍속"
+      },
+      "kma_pm10": {
+        "name": "기상청 미세먼지"
+      },
+      "kma_pm25": {
+        "name": "기상청 초미세먼지"
+      },
+      "naver_temperature": {
+        "name": "네이버 기온"
+      },
+      "naver_humidity": {
+        "name": "네이버 습도"
+      },
+      "naver_wind_speed": {
+        "name": "네이버 풍속"
+      },
+      "naver_pm10": {
+        "name": "네이버 미세먼지"
+      },
+      "naver_pm25": {
+        "name": "네이버 초미세먼지"
+      },
+      "naver_today_high": {
+        "name": "네이버 오늘 최고기온"
+      },
+      "naver_today_low": {
+        "name": "네이버 오늘 최저기온"
+      },
+      "naver_tomorrow_high": {
+        "name": "네이버 내일 최고기온"
+      },
+      "naver_tomorrow_low": {
+        "name": "네이버 내일 최저기온"
+      },
+      "naver_uv": {
+        "name": "네이버 자외선"
+      },
+      "naver_wind_direction": {
+        "name": "네이버 풍향"
+      },
+      "naver_forecast_3h": {
+        "name": "네이버 3시간 예보"
+      },
+      "naver_forecast_6h": {
+        "name": "네이버 6시간 예보"
+      },
+      "naver_forecast_9h": {
+        "name": "네이버 9시간 예보"
+      },
+      "naver_forecast_12h": {
+        "name": "네이버 12시간 예보"
+      },
+      "weatheri_today_high": {
+        "name": "웨더아이 오늘 최고기온"
+      },
+      "weatheri_today_low": {
+        "name": "웨더아이 오늘 최저기온"
+      },
+      "weatheri_tomorrow_high": {
+        "name": "웨더아이 내일 최고기온"
+      },
+      "weatheri_tomorrow_low": {
+        "name": "웨더아이 내일 최저기온"
+      },
+      "weatheri_pm10": {
+        "name": "웨더아이 미세먼지"
+      },
+      "weatheri_pm25": {
+        "name": "웨더아이 초미세먼지"
+      },
+      "weatheri_ozone": {
+        "name": "웨더아이 오존"
+      },
+      "weatheri_nitrogen_dioxide": {
+        "name": "웨더아이 이산화질소"
+      },
+      "weatheri_carbon_monoxide": {
+        "name": "웨더아이 일산화탄소"
+      },
+      "weatheri_sulfur_dioxide": {
+        "name": "웨더아이 아황산가스"
+      },
+      "weatheri_aqi": {
+        "name": "웨더아이 통합대기지수"
+      },
+      "source_status": {
+        "name": "소스 상태",
+        "state": {
+          "fresh": "정상",
+          "cached": "이전 데이터 사용",
+          "degraded": "일부 데이터 없음",
+          "unavailable": "사용 가능한 데이터 없음"
+        }
+      }
     },
     "binary_sensor": {
-      "data_current": {"name": "데이터 최신"},
-      "forecast_data_current": {"name": "예보 데이터 최신"},
-      "weatheri_forecast_data_current": {"name": "웨더아이 예보 데이터 최신"},
-      "weatheri_air_data_current": {"name": "웨더아이 대기 데이터 최신"}
+      "data_current": {
+        "name": "데이터 최신"
+      },
+      "forecast_data_current": {
+        "name": "예보 데이터 최신"
+      },
+      "weatheri_forecast_data_current": {
+        "name": "웨더아이 예보 데이터 최신"
+      },
+      "weatheri_air_data_current": {
+        "name": "웨더아이 대기 데이터 최신"
+      }
+    },
+    "weather": {
+      "weather": {
+        "name": "날씨"
+      }
+    }
+  },
+  "selector": {
+    "review_action": {
+      "options": {
+        "save": "저장",
+        "retry": "실패한 소스 다시 확인",
+        "edit": "지역 수정"
+      }
     }
   }
 }

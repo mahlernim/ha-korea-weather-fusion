@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from functools import partial
 from statistics import fmean
@@ -39,9 +40,10 @@ from .const import (
     WEATHERI_RETRY_DELAYS,
     WEATHERI_SCAN_INTERVAL,
 )
-from .kma import parse_current_weather
-from .naver import parse_air, parse_weather
-from .source import SourceSnapshot
+from .http import async_fetch_page
+from .kma import parse_current_fields, parse_current_weather
+from .naver import parse_air, parse_weather_snapshot
+from .source import KOREA_TZ, SourceSnapshot
 from .weatheri import (
     AIR_KEYS,
     WeatheriAir,
@@ -82,12 +84,14 @@ class TextResult:
     value: str | None
     selected_source: str | None
     rejected_sources: dict[str, str]
+    valid_at: datetime | None = None
 
     @property
     def attributes(self) -> dict[str, Any]:
         return {
             "selected_sources": [self.selected_source] if self.selected_source else [],
             "rejected_sources": self.rejected_sources,
+            "forecast_time": self.valid_at.isoformat() if self.valid_at else None,
         }
 
 
@@ -127,6 +131,8 @@ class WeatherFusionEngine:
                 return snapshot.unavailable_reason
             return f"source_activity_missing:{group}"
         age = self.now - snapshot.last_reported
+        if age < timedelta(0):
+            return f"source_time_in_future:{group}"
         if age > max_age:
             return f"source_stale:{group}:{round(age.total_seconds() / 60)}m"
         return snapshot.unavailable_reason
@@ -137,6 +143,20 @@ class WeatherFusionEngine:
         ):
             return None, reason
         snapshot = self.snapshots[candidate.source_group]
+        if candidate.source_group == "naver_weather" and candidate.key in (
+            "today_high",
+            "today_low",
+            "tomorrow_high",
+            "tomorrow_low",
+        ):
+            # Relative labels are resolved from absolute Korean dates on every read.
+            target = self.now.astimezone(KOREA_TZ).date() + timedelta(
+                days=candidate.key.startswith("tomorrow")
+            )
+            daily = next((item for item in snapshot.daily if item.day == target), None)
+            if daily is None:
+                return None, "forecast_date_missing"
+            return (daily.high if candidate.key.endswith("high") else daily.low), None
         if candidate.key in snapshot.value_errors:
             return None, snapshot.value_errors[candidate.key]
         value = snapshot.numeric.get(candidate.key)
@@ -207,6 +227,8 @@ class WeatherFusionEngine:
         self, source: str, group: str, key: str, max_age: timedelta
     ) -> TextResult:
         """Return one text metric from a normalized snapshot."""
+        if group == "naver_weather" and key in FORECAST_KEYS:
+            return self.forecast(key)
         if reason := self._source_freshness_reason(group, max_age):
             return TextResult(None, None, {source: reason})
         snapshot = self.snapshots[group]
@@ -224,12 +246,13 @@ class WeatherFusionEngine:
         if reason := self._source_freshness_reason("naver_weather", FORECAST_MAX_AGE):
             return TextResult(None, None, {"naver": reason})
         snapshot = self.snapshots["naver_weather"]
-        if key in snapshot.value_errors:
-            return TextResult(None, None, {"naver": snapshot.value_errors[key]})
-        value = snapshot.text.get(key)
-        if value is None:
-            return TextResult(None, None, {"naver": "value_missing"})
-        return TextResult(value, "naver", {})
+        target = self.now.astimezone(KOREA_TZ).replace(
+            minute=0, second=0, microsecond=0
+        ) + timedelta(hours=int(key.removeprefix("forecast_").removesuffix("h")))
+        point = next((item for item in snapshot.hourly if item.time == target), None)
+        if point is None or point.time <= self.now:
+            return TextResult(None, None, {"naver": "forecast_time_missing"})
+        return TextResult(point.text, "naver", {}, point.time)
 
 
 class WeatherFusionManager:
@@ -246,7 +269,11 @@ class WeatherFusionManager:
         if settings is None:
             raise ValueError("Korea Weather Fusion settings are required")
         self.settings = settings
+        self.software_version: str | None = None
         self._listeners: set[Callable[[], None]] = set()
+        self._stopped = False
+        self._tasks: set[asyncio.Task] = set()
+        self._weatheri_lock = asyncio.Lock()
         self._unsub_timer: Callable[[], None] | None = None
         self._unsub_kma_timer: Callable[[], None] | None = None
         self._unsub_naver_timer: Callable[[], None] | None = None
@@ -257,6 +284,7 @@ class WeatherFusionManager:
         self._kma_last_attempt: datetime | None = None
         self._kma_last_success: datetime | None = None
         self._kma_last_error: str | None = None
+        self._kma_value_errors: dict[str, str] = {}
         self._naver_snapshots = {
             group: SourceSnapshot(group=group, last_reported=None)
             for group in ("naver_weather", "naver_air")
@@ -310,11 +338,14 @@ class WeatherFusionManager:
             self.hass, self._async_weatheri_timer, WEATHERI_SCAN_INTERVAL
         )
         self._schedule_weatheri_midnight()
-        self.hass.async_create_task(self.async_update_kma())
-        self.hass.async_create_task(self.async_update_naver())
+        self._spawn(self.async_update_kma())
+        self._spawn(self.async_update_naver())
 
     @callback
     def async_stop(self) -> None:
+        self._stopped = True
+        for task in tuple(self._tasks):
+            task.cancel()
         if self._unsub_timer:
             self._unsub_timer()
             self._unsub_timer = None
@@ -335,6 +366,14 @@ class WeatherFusionManager:
             self._unsub_weatheri_midnight = None
         self._listeners.clear()
 
+    def _spawn(self, coroutine) -> None:
+        if self._stopped:
+            coroutine.close()
+            return
+        task = self.hass.async_create_task(coroutine)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
     @callback
     def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
         self._listeners.add(listener)
@@ -347,6 +386,8 @@ class WeatherFusionManager:
 
     @callback
     def _notify(self) -> None:
+        if self._stopped:
+            return
         for listener in tuple(self._listeners):
             listener()
 
@@ -355,13 +396,13 @@ class WeatherFusionManager:
         self._notify()
 
     async def _async_kma_timer(self, now: datetime) -> None:
-        await self.async_update_kma()
+        self._spawn(self.async_update_kma())
 
     async def _async_naver_timer(self, now: datetime) -> None:
-        await self.async_update_naver()
+        self._spawn(self.async_update_naver())
 
     async def _async_weatheri_timer(self, now: datetime) -> None:
-        await self.async_update_weatheri()
+        self._spawn(self.async_update_weatheri())
 
     async def async_update_naver(self) -> None:
         """Refresh Naver groups independently and retain last good snapshots."""
@@ -372,29 +413,24 @@ class WeatherFusionManager:
         ):
             self._naver_last_attempt[group] = dt_util.utcnow()
             try:
-                async with session.get(
-                    url,
-                    timeout=20,
-                    headers={"User-Agent": "Home Assistant Korea Weather Fusion"},
-                ) as response:
-                    response.raise_for_status()
-                    html = await response.text()
+                html = await async_fetch_page(session, url)
+                fetched_at = dt_util.utcnow()
                 if group == "naver_weather":
-                    numeric, text, value_errors = parse_weather(html)
+                    snapshot = await self.hass.async_add_executor_job(
+                        parse_weather_snapshot, html, fetched_at
+                    )
                 else:
-                    numeric, value_errors = parse_air(html)
-                    text = {}
+                    numeric, value_errors = await self.hass.async_add_executor_job(
+                        parse_air, html
+                    )
+                    snapshot = SourceSnapshot(
+                        group, fetched_at, numeric=numeric, value_errors=value_errors
+                    )
             except (TimeoutError, ClientError, ValueError, UnicodeDecodeError) as err:
                 self._naver_last_error[group] = f"{type(err).__name__}: {err}"
                 continue
 
-            self._naver_snapshots[group] = SourceSnapshot(
-                group=group,
-                last_reported=dt_util.utcnow(),
-                numeric=numeric,
-                text=text,
-                value_errors=value_errors,
-            )
+            self._naver_snapshots[group] = snapshot
             self._naver_last_error[group] = None
         self._notify()
 
@@ -405,7 +441,7 @@ class WeatherFusionManager:
             stored = None
         if not stored:
             return
-        now = dt_util.now()
+        now = dt_util.utcnow().astimezone(KOREA_TZ)
         if raw_forecast := stored.get("forecast"):
             try:
                 forecast = WeatheriForecast.from_dict(raw_forecast)
@@ -435,9 +471,16 @@ class WeatherFusionManager:
                 self._weatheri_air = None
 
     async def async_update_weatheri(self) -> None:
+        """Avoid overlapping timer/retry/rollover fetches."""
+        if self._weatheri_lock.locked() or self._stopped:
+            return
+        async with self._weatheri_lock:
+            await self._async_update_weatheri()
+
+    async def _async_update_weatheri(self) -> None:
         """Refresh Weatheri forecast and air independently with cached fallback."""
         session = async_get_clientsession(self.hass)
-        now = dt_util.now()
+        now = dt_util.utcnow().astimezone(KOREA_TZ)
         group = "weatheri_forecast"
         self._weatheri_last_attempt[group] = now
         try:
@@ -472,7 +515,7 @@ class WeatherFusionManager:
                 self._unsub_weatheri_retry = None
 
         group = "weatheri_air"
-        air_now = dt_util.now()
+        air_now = dt_util.utcnow().astimezone(KOREA_TZ)
         self._weatheri_last_attempt[group] = air_now
         try:
             html = await async_fetch_html(session, self.settings.weatheri_air_url)
@@ -523,7 +566,7 @@ class WeatherFusionManager:
         @callback
         def retry(_now: datetime) -> None:
             self._unsub_weatheri_retry = None
-            self.hass.async_create_task(self.async_update_weatheri())
+            self._spawn(self.async_update_weatheri())
 
         self._unsub_weatheri_retry = async_call_later(
             self.hass, delay.total_seconds(), retry
@@ -532,7 +575,7 @@ class WeatherFusionManager:
     def _schedule_weatheri_midnight(self) -> None:
         if self._unsub_weatheri_midnight:
             self._unsub_weatheri_midnight()
-        now = dt_util.now()
+        now = dt_util.utcnow().astimezone(KOREA_TZ)
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(
             days=1
         )
@@ -541,7 +584,7 @@ class WeatherFusionManager:
         def rollover(_now: datetime) -> None:
             self._unsub_weatheri_midnight = None
             self._notify()
-            self.hass.async_create_task(self.async_update_weatheri())
+            self._spawn(self.async_update_weatheri())
             self._schedule_weatheri_midnight()
 
         self._unsub_weatheri_midnight = async_call_later(
@@ -553,10 +596,10 @@ class WeatherFusionManager:
         self._kma_last_attempt = dt_util.utcnow()
         session = async_get_clientsession(self.hass)
         try:
-            async with session.get(self.settings.kma_url, timeout=20) as response:
-                response.raise_for_status()
-                html = await response.text()
-            values = self._parse_kma_html(html)
+            html = await async_fetch_page(session, self.settings.kma_url)
+            values, errors = await self.hass.async_add_executor_job(
+                parse_current_fields, html
+            )
         except (TimeoutError, ClientError, ValueError, UnicodeDecodeError) as err:
             self._kma_last_error = f"{type(err).__name__}: {err}"
             self._notify()
@@ -568,6 +611,7 @@ class WeatherFusionManager:
             for key, value in values.items()
         }
         self._kma_last_success = reported
+        self._kma_value_errors = errors
         self._kma_last_error = None
         self._notify()
 
@@ -583,18 +627,15 @@ class WeatherFusionManager:
             if group == "naver_weather"
             else self.settings.naver_air_url
         )
-        return SourceSnapshot(
-            group=group,
-            last_reported=snapshot.last_reported,
-            numeric=snapshot.numeric,
-            text=snapshot.text,
-            value_errors=snapshot.value_errors,
+        return replace(
+            snapshot,
             unavailable_reason=(
                 f"source_unavailable:{group}:{error}"
                 if snapshot.last_reported is None and error
                 else None
             ),
             attributes={
+                **snapshot.attributes,
                 "last_attempt": self._naver_last_attempt[group].isoformat()
                 if self._naver_last_attempt[group]
                 else None,
@@ -607,7 +648,7 @@ class WeatherFusionManager:
         )
 
     def _weatheri_snapshot(self, group: str) -> SourceSnapshot:
-        now = dt_util.now()
+        now = dt_util.utcnow().astimezone(KOREA_TZ)
         attributes: dict[str, Any] = {
             "last_attempt": self._weatheri_last_attempt[group].isoformat()
             if self._weatheri_last_attempt[group]
@@ -704,6 +745,7 @@ class WeatherFusionManager:
             for key in KMA_METRIC_KEYS
             if key not in self._kma_samples
         }
+        kma_errors.update(self._kma_value_errors)
         kma_unavailable = None
         if self._kma_last_success is None and self._kma_last_error:
             kma_unavailable = f"source_unavailable:weather_go_kr:{self._kma_last_error}"
@@ -890,3 +932,38 @@ class WeatherFusionManager:
                 "naver_weather": self.source_activity_attributes()["naver_weather"]
             },
         }
+
+    def status(self) -> str:
+        """Summarize capability loss separately from retained source data."""
+        metrics = [self.metric(key) for key in METRIC_KEYS]
+        values = [item.value for item in metrics]
+        predictions = [self.forecast(key).value for key in FORECAST_KEYS]
+        if all(value is None for value in (*values, *predictions)):
+            return "unavailable"
+        if any(value is None for value in (*values, *predictions)):
+            return "degraded"
+        snapshots = self.source_snapshots()
+        selected = {
+            ("naver_air" if key in ("pm10", "pm25") else "naver_weather")
+            if source == "naver"
+            else ("weatheri_air" if key in ("pm10", "pm25") else "weatheri_forecast")
+            if source == "weatheri"
+            else source
+            for key, result in zip(METRIC_KEYS, metrics)
+            for source in result.selected_sources
+        }
+        selected.add("naver_weather")
+        if any(
+            snapshots[group].attributes.get("last_error")
+            or snapshots[group].attributes.get("using_cached_data")
+            for group in selected
+        ):
+            return "cached"
+        # Missing optional Naver PM cards must not imply that useful data is old.
+        if any(
+            item.attributes.get("last_error") or item.unavailable_reason
+            for group, item in snapshots.items()
+            if group != "naver_air"
+        ):
+            return "degraded"
+        return "fresh"

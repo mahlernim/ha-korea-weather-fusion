@@ -13,14 +13,17 @@ class WeatherFusionEntity(Entity):
     """Entity driven by normalized weather-source snapshots."""
 
     _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(self, manager: WeatherFusionManager) -> None:
+        super().__init__()
         self.manager = manager
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, DOMAIN)},
-            manufacturer="Local Home Assistant",
-            model="State fusion helper",
+            manufacturer="Korea Weather Fusion",
+            model="Weather and air quality",
             name="Korea Weather Fusion",
+            sw_version=manager.software_version,
         )
 
     async def async_added_to_hass(self) -> None:

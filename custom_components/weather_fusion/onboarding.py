@@ -1,70 +1,47 @@
-"""Guided location resolution and setup validation."""
+"""Location resolution and shared, capability-aware source validation."""
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from functools import partial
 
 import aiohttp
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
 from .catalog import get_location
-from .configuration import (
-    CONF_KMA_CODE,
-    CONF_LOCATION_ID,
-    CONF_NAVER_AIR_QUERY,
-    CONF_NAVER_WEATHER_QUERY,
-    CONF_WEATHERI_AIR_REGION_CODE,
-    CONF_WEATHERI_AIR_STATION,
-    CONF_WEATHERI_FORECAST_GROUP,
-    CONF_WEATHERI_FORECAST_RID,
-    CONF_WEATHERI_LOCATION,
-    WeatherFusionSettings,
-)
+from .configuration import WeatherFusionSettings
+from .const import FORECAST_KEYS, WEATHERI_AIR_MAX_AGE
+from .http import async_fetch_page
 from .kma import (
     KmaConnectionError,
     KmaLocationError,
     ResolvedKmaLocation,
-    async_refine_with_station,
     async_resolve_location,
     parse_current_weather,
 )
-from .naver import parse_weather as parse_naver_weather
+from .naver import parse_air as parse_naver_air
+from .naver import parse_weather_snapshot
+from .source import KOREA_TZ
 from .weatheri import (
     WeatheriError,
     async_fetch_html,
     discover_air_stations,
+    parse_air,
+    parse_forecast,
 )
-from .weatheri import (
-    parse_air as parse_weatheri_air,
-)
-from .weatheri import (
-    parse_forecast as parse_weatheri_forecast,
-)
-
-_MAX_RESPONSE_BYTES = 1024 * 1024
-_REQUEST_HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.5",
-    "User-Agent": "Home Assistant Korea Weather Fusion",
-}
 
 
 class GuidedSetupError(Exception):
-    """A translated config-flow error key."""
-
-    def __init__(self, translation_key: str) -> None:
+    def __init__(self, translation_key: str):
         super().__init__(translation_key)
         self.translation_key = translation_key
 
 
 @dataclass(frozen=True, slots=True)
 class GuidedSetup:
-    """Resolved settings and cached Weatheri setup data."""
-
     values: dict[str, str]
     location_label: str
     resolved_kma: ResolvedKmaLocation
@@ -72,202 +49,208 @@ class GuidedSetup:
     weatheri_air_html: str
 
     @property
-    def kma_location_label(self) -> str:
-        """Return the KMA location shown in the station step."""
+    def kma_location_label(self):
         return self.resolved_kma.zone.name
 
 
-async def async_prepare_guided_setup(
-    hass: HomeAssistant, location_id: str
-) -> GuidedSetup:
-    """Resolve source selectors and load valid Weatheri station choices."""
+@dataclass
+class ValidationReport:
+    """Available capabilities can support an explicitly limited setup."""
+
+    available: dict[str, set[str]] = field(default_factory=dict)
+    errors: dict[str, str] = field(default_factory=dict)
+    checked_at: datetime | None = None
+
+    @property
+    def usable(self):
+        return any(self.available.values())
+
+    @property
+    def complete(self):
+        return not any(source != "naver_air" for source in self.errors)
+
+    @property
+    def missing(self):
+        required = {
+            "kma": {"temperature", "humidity", "wind_speed"},
+            "naver_weather": {"temperature", "humidity", "daily", *FORECAST_KEYS},
+            "naver_air": {"pm10", "pm25"},
+            "weatheri_forecast": {"daily"},
+            "weatheri_air": {"pm10", "pm25"},
+        }
+        return {
+            source: sorted(fields - self.available.get(source, set()))
+            for source, fields in required.items()
+            if source in self.errors
+        }
+
+
+async def async_prepare_guided_setup(hass, location_id):
     try:
         location = get_location(location_id)
     except ValueError as err:
         raise GuidedSetupError("invalid_location") from err
-
     session = async_get_clientsession(hass)
     try:
-        resolved_kma = await async_resolve_location(session, location)
+        resolved = await async_resolve_location(session, location)
     except KmaConnectionError as err:
         raise GuidedSetupError("cannot_connect_kma") from err
     except KmaLocationError as err:
         raise GuidedSetupError("cannot_resolve_kma") from err
-
-    query_location = location.label.replace(" · ", " ")
+    place = location.label.replace(" · ", " ")
     values = {
-        CONF_LOCATION_ID: location.rid,
-        CONF_KMA_CODE: resolved_kma.zone.code,
-        CONF_NAVER_WEATHER_QUERY: f"{query_location} 날씨",
-        CONF_NAVER_AIR_QUERY: f"{query_location} 미세먼지",
-        CONF_WEATHERI_FORECAST_RID: location.rid,
-        CONF_WEATHERI_FORECAST_GROUP: location.forecast_group,
-        CONF_WEATHERI_LOCATION: location.name,
-        CONF_WEATHERI_AIR_REGION_CODE: location.air_region_code,
-        CONF_WEATHERI_AIR_STATION: "",
+        "location_id": location.rid,
+        "kma_code": resolved.zone.code,
+        "naver_weather_query": f"{place} 날씨",
+        "naver_air_query": f"{place} 미세먼지",
+        "weatheri_forecast_rid": location.rid,
+        "weatheri_forecast_group": location.forecast_group,
+        "weatheri_location": location.name,
+        "weatheri_air_region_code": location.air_region_code,
+        "weatheri_air_station": "",
     }
-    settings = WeatherFusionSettings.from_mapping(values)
     try:
-        forecast_html, air_html = await asyncio.gather(
-            async_fetch_html(session, settings.weatheri_forecast_url),
-            async_fetch_html(session, settings.weatheri_air_url),
+        html = await async_fetch_html(
+            session, WeatherFusionSettings.from_mapping(values).weatheri_air_url
         )
+        stations = await hass.async_add_executor_job(discover_air_stations, html)
     except WeatheriError as err:
         raise GuidedSetupError("cannot_connect_weatheri") from err
-
-    now = dt_util.now()
-    try:
-        await hass.async_add_executor_job(
-            partial(
-                parse_weatheri_forecast,
-                forecast_html,
-                location=location.name,
-                current_date=now.date(),
-                fetched_at=now,
-            )
-        )
-        stations = await hass.async_add_executor_job(discover_air_stations, air_html)
-    except WeatheriError as err:
-        raise GuidedSetupError("invalid_weatheri_data") from err
-
     return GuidedSetup(
-        values=values,
-        location_label=location.label,
-        resolved_kma=resolved_kma,
-        stations=_rank_stations(location.label, tuple(stations)),
-        weatheri_air_html=air_html,
+        values,
+        location.label,
+        resolved,
+        _rank_stations(location.label, tuple(stations)),
+        html,
     )
 
 
-async def async_finalize_guided_values(
-    hass: HomeAssistant,
-    guided: GuidedSetup,
-    station: str,
-) -> dict[str, str]:
-    """Specialize KMA and Naver selectors with the chosen air station."""
-    session = async_get_clientsession(hass)
-    try:
-        resolved_kma = await async_refine_with_station(
-            session, guided.resolved_kma, station
-        )
-    except KmaConnectionError as err:
-        raise GuidedSetupError("cannot_connect_kma") from err
-    except KmaLocationError as err:
-        raise GuidedSetupError("cannot_resolve_kma") from err
-
-    query_location = _detailed_query_location(guided.location_label, station)
-    return {
-        **guided.values,
-        CONF_KMA_CODE: resolved_kma.zone.code,
-        CONF_NAVER_WEATHER_QUERY: f"{query_location} 날씨",
-        CONF_NAVER_AIR_QUERY: f"{query_location} 미세먼지",
-        CONF_WEATHERI_AIR_STATION: station,
-    }
+async def async_finalize_guided_values(hass, guided, station):
+    """Air-station selection must not silently change the weather location."""
+    return {**guided.values, "weatheri_air_station": station}
 
 
-async def async_validate_guided_setup(
-    hass: HomeAssistant,
-    values: dict[str, str],
-    *,
-    weatheri_air_html: str,
-) -> dict[str, str]:
-    """Validate required feeds and the chosen Weatheri station."""
+async def async_validate_sources(hass, values, previous=None):
+    """Validate all sources, or retry failures while keeping recent valid checks."""
     settings = WeatherFusionSettings.from_mapping(values)
     session = async_get_clientsession(hass)
-    results = await asyncio.gather(
-        _async_fetch_page(session, settings.kma_url),
-        _async_fetch_page(session, settings.naver_weather_url),
-        return_exceptions=True,
-    )
-    errors: dict[str, str] = {}
-    for source, result in zip(("kma", "naver_weather"), results):
-        if isinstance(result, BaseException):
-            errors[source] = f"cannot_connect_{source}"
+    now = dt_util.utcnow().astimezone(KOREA_TZ)
+    report = ValidationReport(checked_at=now)
+    if (
+        previous
+        and previous.checked_at
+        and now - previous.checked_at < timedelta(minutes=5)
+    ):
+        report.available = {
+            key: set(value) for key, value in previous.available.items()
+        }
+        report.errors = dict(previous.errors)
+        # Keep the age of reused successes; repeated retries must not renew them.
+        report.checked_at = previous.checked_at
+    urls = {
+        "kma": settings.kma_url,
+        "naver_weather": settings.naver_weather_url,
+        "naver_air": settings.naver_air_url,
+        "weatheri_forecast": settings.weatheri_forecast_url,
+        "weatheri_air": settings.weatheri_air_url,
+    }
+    wanted = [
+        key for key in urls if key not in report.available or key in report.errors
+    ]
 
-    if "kma" not in errors:
+    async def check(source):
+        available = set()
         try:
-            await hass.async_add_executor_job(parse_current_weather, results[0])
-        except (TypeError, ValueError):
-            errors["kma"] = "invalid_kma_data"
-    if "naver_weather" not in errors:
-        try:
-            numeric, _, _ = await hass.async_add_executor_job(
-                parse_naver_weather, results[1]
+            fetch = (
+                async_fetch_html if source.startswith("weatheri") else async_fetch_page
             )
-            if "temperature" not in numeric or "humidity" not in numeric:
-                raise ValueError("required Naver weather values are missing")
-        except (TypeError, ValueError):
-            errors["naver_weather"] = "invalid_naver_weather_data"
-    try:
-        now = dt_util.now()
-        await hass.async_add_executor_job(
-            partial(
-                parse_weatheri_air,
-                weatheri_air_html,
-                station=settings.weatheri_air_station,
-                fetched_at=now,
-                local_tz=now.tzinfo,
-            )
-        )
-    except WeatheriError:
-        errors["weatheri_air"] = "invalid_weatheri_air_data"
-    return errors
-
-
-async def _async_fetch_page(session: aiohttp.ClientSession, url: str) -> str:
-    try:
-        async with asyncio.timeout(16):
-            async with session.get(
-                url,
-                timeout=aiohttp.ClientTimeout(total=15),
-                headers=_REQUEST_HEADERS,
-            ) as response:
-                if response.status != 200:
-                    raise aiohttp.ClientResponseError(
-                        response.request_info,
-                        response.history,
-                        status=response.status,
+            html = await fetch(session, urls[source])
+            if source == "kma":
+                data = await hass.async_add_executor_job(parse_current_weather, html)
+                available.update(data)
+                required = {"temperature", "humidity", "wind_speed"}
+            elif source == "naver_weather":
+                data = await hass.async_add_executor_job(
+                    parse_weather_snapshot, html, now
+                )
+                available.update(
+                    data.numeric.keys()
+                    - {"today_high", "today_low", "tomorrow_high", "tomorrow_low"}
+                )
+                if {now.date(), now.date() + timedelta(days=1)} <= {
+                    item.day for item in data.daily
+                }:
+                    available.add("daily")
+                targets = {item.time for item in data.hourly if item.text}
+                for key in FORECAST_KEYS:
+                    target = now.replace(minute=0, second=0, microsecond=0) + timedelta(
+                        hours=int(key[9:-1])
                     )
+                    if target in targets:
+                        available.add(key)
+                required = {"temperature", "humidity", "daily", *FORECAST_KEYS}
+            elif source == "naver_air":
+                data, _ = await hass.async_add_executor_job(parse_naver_air, html)
+                available.update(data)
+                required = {"pm10", "pm25"}
+            elif source == "weatheri_forecast":
+                await hass.async_add_executor_job(
+                    partial(
+                        parse_forecast,
+                        html,
+                        location=settings.weatheri_location,
+                        current_date=now.date(),
+                        fetched_at=now,
+                    )
+                )
+                available.add("daily")
+                required = {"daily"}
+            else:
+                data = await hass.async_add_executor_job(
+                    partial(
+                        parse_air,
+                        html,
+                        station=settings.weatheri_air_station,
+                        fetched_at=now,
+                        local_tz=KOREA_TZ,
+                    )
+                )
                 if (
-                    response.content_length is not None
-                    and response.content_length > _MAX_RESPONSE_BYTES
+                    not timedelta(0)
+                    <= now - data.source_updated_at
+                    <= WEATHERI_AIR_MAX_AGE
                 ):
-                    raise ValueError("response is too large")
-                payload = await response.read()
-    except (TimeoutError, aiohttp.ClientError) as err:
-        raise ConnectionError(str(err)) from err
-    if len(payload) > _MAX_RESPONSE_BYTES:
-        raise ValueError("response is too large")
-    try:
-        return payload.decode(response.charset or "utf-8")
-    except (LookupError, UnicodeDecodeError) as err:
-        raise ValueError("response encoding is invalid") from err
+                    return source, set(), "stale_data"
+                available.update(
+                    key for key, value in data.measurements.items() if value is not None
+                )
+                required = {"pm10", "pm25"}
+            return source, available, None if required <= available else "missing_data"
+        except (WeatheriError, ValueError, OSError, TimeoutError, aiohttp.ClientError):
+            return source, available, "cannot_validate"
+
+    for source, available, error in await asyncio.gather(
+        *(check(source) for source in wanted)
+    ):
+        report.available[source] = available
+        if error:
+            report.errors[source] = error
+        else:
+            report.errors.pop(source, None)
+    return report
 
 
-def _detailed_query_location(location_label: str, station: str) -> str:
-    """Return a consistent province-and-station Naver place."""
-    province = location_label.split(" · ", maxsplit=1)[0]
-    if _normalized_place_name(station) == _normalized_place_name(province):
-        return province
-    return f"{province} {station}"
-
-
-def _rank_stations(location_label: str, stations: tuple[str, ...]) -> tuple[str, ...]:
-    """Place a station matching the forecast location first when available."""
+def _rank_stations(location_label, stations):
     parts = location_label.split(" · ", maxsplit=1)
     if len(parts) == 1:
         return stations
     wanted = _normalized_place_name(parts[1])
     return tuple(
-        sorted(
-            stations,
-            key=lambda station: _normalized_place_name(station) != wanted,
-        )
+        sorted(stations, key=lambda station: _normalized_place_name(station) != wanted)
     )
 
 
-def _normalized_place_name(value: str) -> str:
-    """Normalize common Korean administrative suffixes for matching."""
+def _normalized_place_name(value):
     normalized = value.replace(" ", "")
     for suffix in ("특별자치시", "광역시", "특별시", "시", "군", "구"):
         if len(normalized) > 2 and normalized.endswith(suffix):

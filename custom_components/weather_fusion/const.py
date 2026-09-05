@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 DOMAIN = "weather_fusion"
-PLATFORMS = ("sensor", "binary_sensor")
+PLATFORMS = ("sensor", "binary_sensor", "weather")
 
 CURRENT_MAX_AGE = timedelta(hours=2)
 FORECAST_MAX_AGE = timedelta(hours=36)

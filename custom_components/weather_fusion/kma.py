@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
+from bs4 import BeautifulSoup
 
 from .catalog import ForecastLocation
 
@@ -175,32 +176,61 @@ async def async_fetch_zones(
 
 def parse_current_weather(html: str) -> dict[str, float]:
     """Extract current values from a weather.go.kr rendered fragment."""
-    temperature = _extract_number(html, r'<span class="tmp">\s*([-+]?\d+(?:\.\d+)?)')
-    humidity = _extract_number(
-        html,
-        r'<span class="lbl ic-hm".*?</span>\s*'
-        r'<span class="val">\s*([-+]?\d+(?:\.\d+)?)',
-    )
-    wind_kmh = _extract_number(
-        html,
-        r'<span class="lbl ic-wind".*?</span>\s*'
-        r'<span class="val">.*?([-+]?\d+(?:\.\d+)?)\s*'
-        r'<small class="unit">km/h',
-    )
-    air_values = re.findall(
-        r'<span class="air-lvv">\s*([-+]?\d+(?:\.\d+)?)\s*</span>',
-        html,
-        flags=re.DOTALL,
-    )
-    if len(air_values) < 2:
-        raise ValueError("missing_air_values")
-    return {
-        "temperature": temperature,
-        "humidity": humidity,
-        "wind_speed": round(wind_kmh / 3.6, 1),
-        "pm10": float(air_values[1]),
-        "pm25": float(air_values[0]),
+    return parse_current_fields(html)[0]
+
+
+def parse_current_fields(html: str) -> tuple[dict[str, float], dict[str, str]]:
+    """Keep usable fields when another observation is missing or malformed."""
+    patterns = {
+        "temperature": r'<span class="tmp">\s*([-+]?\d+(?:\.\d+)?)',
+        "humidity": (
+            r'<span class="lbl ic-hm".*?</span>\s*'
+            r'<span class="val">\s*([-+]?\d+(?:\.\d+)?)'
+        ),
+        "wind_speed": (
+            r'<span class="lbl ic-wind".*?</span>\s*'
+            r'<span class="val">.*?([-+]?\d+(?:\.\d+)?)\s*'
+            r'<small class="unit">km/h'
+        ),
     }
+    limits = {
+        "temperature": (-50, 60),
+        "humidity": (0, 100),
+        "wind_speed": (0, 500),
+        "pm10": (0, 2000),
+        "pm25": (0, 2000),
+    }
+    values, errors = {}, {}
+    soup = BeautifulSoup(html, "html.parser")
+    air = {}
+    for key in ("pm10", "pm25"):
+        label = soup.select_one(f'[data-air-type="{key}"]')
+        container = label.find_parent("strong") if label else None
+        node = container.select_one(".air-lvv") if container else None
+        if node:
+            air[key] = node.get_text(strip=True)
+    # Older fragments contain exactly two cells in PM2.5/PM10 order.
+    # Preserve missing cells; never infer positions from only numeric matches.
+    nodes = soup.select(".air-lvv")
+    if not soup.select("[data-air-type]") and len(nodes) == 2:
+        air = {
+            key: node.get_text(strip=True) for key, node in zip(("pm25", "pm10"), nodes)
+        }
+    for key, (low, high) in limits.items():
+        try:
+            value = (
+                _extract_number(html, patterns[key])
+                if key in patterns
+                else float(air.get(key, ""))
+            )
+            if not low <= value <= high:
+                raise ValueError("out_of_range")
+            values[key] = round(value / 3.6, 1) if key == "wind_speed" else value
+        except ValueError:
+            errors[key] = f"missing_or_invalid:{key}"
+    if not values:
+        raise ValueError("missing_pattern:no_current_values")
+    return values, errors
 
 
 def _zone_from_mapping(value: dict[str, Any]) -> KmaZone:

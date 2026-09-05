@@ -3,15 +3,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Choose a location",
-        "description": "Select a Korean forecast location. Korea Weather Fusion will resolve and validate the KMA, Naver, and Weatheri settings automatically.",
+        "title": "Choose weather location",
+        "description": "Choose a province, then a forecast area. Air-quality stations are configured independently.",
         "data": {
-          "location_id": "Forecast location"
+          "region": "Province or manual setup"
         }
       },
       "air_station": {
         "title": "Choose an air-quality station",
-        "description": "Location: {location}. Resolved KMA area: {kma_location}. Choose the Weatheri monitoring station to validate all three sources.",
+        "description": "Weather area: {location}. KMA area: {kma_location}. Choosing a station does not change the weather area.",
         "data": {
           "weatheri_air_station": "Weatheri air station"
         }
@@ -29,14 +29,37 @@
           "weatheri_air_region_code": "Weatheri air region code",
           "weatheri_air_station": "Weatheri air station"
         }
+      },
+      "location": {
+        "title": "Forecast area",
+        "description": "Choose the area whose weather you want to monitor. Type to filter the list.",
+        "data": {
+          "location_id": "Forecast area"
+        }
+      },
+      "review": {
+        "title": "Review locations and sources",
+        "description": "Selected area: {location}\n\nKMA area: {kma_location}\nNaver weather: {naver_query}\nWeatheri forecast area: {weatheri_location}\nAir station: {station}\n\n**Data checks**\n- KMA: {kma}\n- Naver weather: {naver_weather}\n- Naver air (optional): {naver_air}\n- Weatheri forecast: {weatheri_forecast}\n- Weatheri air: {weatheri_air}\n\nLimited mode provides only usable data. Sources are restored automatically when they recover.",
+        "data": {
+          "action": "Next action",
+          "allow_limited": "I understand the missing data and want to save in limited mode"
+        }
+      },
+      "reconfigure": {
+        "title": "Choose weather location",
+        "description": "Choose a province, then a forecast area. Air-quality stations are configured independently.",
+        "data": {
+          "region": "Province or manual setup"
+        }
       }
     },
     "abort": {
       "already_configured": "Korea Weather Fusion is already configured.",
-      "unknown": "The setup flow could not be resumed. Start again."
+      "unknown": "The setup flow could not be resumed. Start again.",
+      "reconfigure_successful": "Location settings updated."
     },
     "error": {
-      "invalid_code": "Enter digits only.",
+      "invalid_code": "KMA code and forecast RID must contain 10 digits; group and region codes require 1–2 digits.",
       "invalid_location": "Choose a supported forecast location.",
       "invalid_station": "Choose a station from the current list.",
       "cannot_connect_kma": "Could not load KMA locations. Check the connection and try again.",
@@ -48,21 +71,24 @@
       "invalid_kma_data": "KMA did not return valid weather data for the resolved area.",
       "invalid_naver_weather_data": "Naver did not return valid weather data for this location.",
       "invalid_naver_air_data": "Naver did not return valid air-quality data for this location.",
-      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station."
+      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station.",
+      "limited_confirmation": "Acknowledge limited mode or retry the source checks.",
+      "no_usable_sources": "No usable data. Correct the location or retry.",
+      "checks_refreshed": "Checks were refreshed. Review the updated results before saving."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Change location",
-        "description": "Select a catalog location or choose Advanced manual setup. Existing entity IDs are preserved.",
+        "title": "Choose weather location",
+        "description": "Choose a province, then a forecast area. Air-quality stations are configured independently.",
         "data": {
-          "location_id": "Forecast location"
+          "region": "Province or manual setup"
         }
       },
       "air_station": {
         "title": "Choose an air-quality station",
-        "description": "Location: {location}. Resolved KMA area: {kma_location}. Choose the Weatheri monitoring station to validate all three sources.",
+        "description": "Weather area: {location}. KMA area: {kma_location}. Choosing a station does not change the weather area.",
         "data": {
           "weatheri_air_station": "Weatheri air station"
         }
@@ -80,10 +106,25 @@
           "weatheri_air_region_code": "Weatheri air region code",
           "weatheri_air_station": "Weatheri air station"
         }
+      },
+      "location": {
+        "title": "Forecast area",
+        "description": "Choose the area whose weather you want to monitor. Type to filter the list.",
+        "data": {
+          "location_id": "Forecast area"
+        }
+      },
+      "review": {
+        "title": "Review locations and sources",
+        "description": "Selected area: {location}\n\nKMA area: {kma_location}\nNaver weather: {naver_query}\nWeatheri forecast area: {weatheri_location}\nAir station: {station}\n\n**Data checks**\n- KMA: {kma}\n- Naver weather: {naver_weather}\n- Naver air (optional): {naver_air}\n- Weatheri forecast: {weatheri_forecast}\n- Weatheri air: {weatheri_air}\n\nLimited mode provides only usable data. Sources are restored automatically when they recover.",
+        "data": {
+          "action": "Next action",
+          "allow_limited": "I understand the missing data and want to save in limited mode"
+        }
       }
     },
     "error": {
-      "invalid_code": "Enter digits only.",
+      "invalid_code": "KMA code and forecast RID must contain 10 digits; group and region codes require 1–2 digits.",
       "invalid_location": "Choose a supported forecast location.",
       "invalid_station": "Choose a station from the current list.",
       "cannot_connect_kma": "Could not load KMA locations. Check the connection and try again.",
@@ -95,61 +136,183 @@
       "invalid_kma_data": "KMA did not return valid weather data for the resolved area.",
       "invalid_naver_weather_data": "Naver did not return valid weather data for this location.",
       "invalid_naver_air_data": "Naver did not return valid air-quality data for this location.",
-      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station."
+      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station.",
+      "limited_confirmation": "Acknowledge limited mode or retry the source checks.",
+      "no_usable_sources": "No usable data. Correct the location or retry.",
+      "checks_refreshed": "Checks were refreshed. Review the updated results before saving."
     }
   },
   "entity": {
     "sensor": {
-      "temperature": {"name": "Temperature"},
-      "humidity": {"name": "Humidity"},
-      "wind_speed": {"name": "Wind speed"},
-      "pm10": {"name": "PM10"},
-      "pm25": {"name": "PM2.5"},
-      "today_high": {"name": "Today high"},
-      "today_low": {"name": "Today low"},
-      "tomorrow_high": {"name": "Tomorrow high"},
-      "tomorrow_low": {"name": "Tomorrow low"},
-      "forecast_3h": {"name": "Forecast 3h"},
-      "forecast_6h": {"name": "Forecast 6h"},
-      "forecast_9h": {"name": "Forecast 9h"},
-      "forecast_12h": {"name": "Forecast 12h"},
-      "kma_temperature": {"name": "KMA Temperature"},
-      "kma_humidity": {"name": "KMA Humidity"},
-      "kma_wind_speed": {"name": "KMA Wind speed"},
-      "kma_pm10": {"name": "KMA PM10"},
-      "kma_pm25": {"name": "KMA PM2.5"},
-      "naver_temperature": {"name": "Naver Temperature"},
-      "naver_humidity": {"name": "Naver Humidity"},
-      "naver_wind_speed": {"name": "Naver Wind speed"},
-      "naver_pm10": {"name": "Naver PM10"},
-      "naver_pm25": {"name": "Naver PM2.5"},
-      "naver_today_high": {"name": "Naver Today high"},
-      "naver_today_low": {"name": "Naver Today low"},
-      "naver_tomorrow_high": {"name": "Naver Tomorrow high"},
-      "naver_tomorrow_low": {"name": "Naver Tomorrow low"},
-      "naver_uv": {"name": "Naver UV"},
-      "naver_wind_direction": {"name": "Naver Wind direction"},
-      "naver_forecast_3h": {"name": "Naver Forecast 3h"},
-      "naver_forecast_6h": {"name": "Naver Forecast 6h"},
-      "naver_forecast_9h": {"name": "Naver Forecast 9h"},
-      "naver_forecast_12h": {"name": "Naver Forecast 12h"},
-      "weatheri_today_high": {"name": "Weatheri Today high"},
-      "weatheri_today_low": {"name": "Weatheri Today low"},
-      "weatheri_tomorrow_high": {"name": "Weatheri Tomorrow high"},
-      "weatheri_tomorrow_low": {"name": "Weatheri Tomorrow low"},
-      "weatheri_pm10": {"name": "Weatheri PM10"},
-      "weatheri_pm25": {"name": "Weatheri PM2.5"},
-      "weatheri_ozone": {"name": "Weatheri Ozone"},
-      "weatheri_nitrogen_dioxide": {"name": "Weatheri Nitrogen dioxide"},
-      "weatheri_carbon_monoxide": {"name": "Weatheri Carbon monoxide"},
-      "weatheri_sulfur_dioxide": {"name": "Weatheri Sulfur dioxide"},
-      "weatheri_aqi": {"name": "Weatheri Comprehensive AQI"}
+      "temperature": {
+        "name": "Temperature"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "wind_speed": {
+        "name": "Wind speed"
+      },
+      "pm10": {
+        "name": "PM10"
+      },
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "today_high": {
+        "name": "Today high"
+      },
+      "today_low": {
+        "name": "Today low"
+      },
+      "tomorrow_high": {
+        "name": "Tomorrow high"
+      },
+      "tomorrow_low": {
+        "name": "Tomorrow low"
+      },
+      "forecast_3h": {
+        "name": "Forecast 3h"
+      },
+      "forecast_6h": {
+        "name": "Forecast 6h"
+      },
+      "forecast_9h": {
+        "name": "Forecast 9h"
+      },
+      "forecast_12h": {
+        "name": "Forecast 12h"
+      },
+      "kma_temperature": {
+        "name": "KMA Temperature"
+      },
+      "kma_humidity": {
+        "name": "KMA Humidity"
+      },
+      "kma_wind_speed": {
+        "name": "KMA Wind speed"
+      },
+      "kma_pm10": {
+        "name": "KMA PM10"
+      },
+      "kma_pm25": {
+        "name": "KMA PM2.5"
+      },
+      "naver_temperature": {
+        "name": "Naver Temperature"
+      },
+      "naver_humidity": {
+        "name": "Naver Humidity"
+      },
+      "naver_wind_speed": {
+        "name": "Naver Wind speed"
+      },
+      "naver_pm10": {
+        "name": "Naver PM10"
+      },
+      "naver_pm25": {
+        "name": "Naver PM2.5"
+      },
+      "naver_today_high": {
+        "name": "Naver Today high"
+      },
+      "naver_today_low": {
+        "name": "Naver Today low"
+      },
+      "naver_tomorrow_high": {
+        "name": "Naver Tomorrow high"
+      },
+      "naver_tomorrow_low": {
+        "name": "Naver Tomorrow low"
+      },
+      "naver_uv": {
+        "name": "Naver UV"
+      },
+      "naver_wind_direction": {
+        "name": "Naver Wind direction"
+      },
+      "naver_forecast_3h": {
+        "name": "Naver Forecast 3h"
+      },
+      "naver_forecast_6h": {
+        "name": "Naver Forecast 6h"
+      },
+      "naver_forecast_9h": {
+        "name": "Naver Forecast 9h"
+      },
+      "naver_forecast_12h": {
+        "name": "Naver Forecast 12h"
+      },
+      "weatheri_today_high": {
+        "name": "Weatheri Today high"
+      },
+      "weatheri_today_low": {
+        "name": "Weatheri Today low"
+      },
+      "weatheri_tomorrow_high": {
+        "name": "Weatheri Tomorrow high"
+      },
+      "weatheri_tomorrow_low": {
+        "name": "Weatheri Tomorrow low"
+      },
+      "weatheri_pm10": {
+        "name": "Weatheri PM10"
+      },
+      "weatheri_pm25": {
+        "name": "Weatheri PM2.5"
+      },
+      "weatheri_ozone": {
+        "name": "Weatheri Ozone"
+      },
+      "weatheri_nitrogen_dioxide": {
+        "name": "Weatheri Nitrogen dioxide"
+      },
+      "weatheri_carbon_monoxide": {
+        "name": "Weatheri Carbon monoxide"
+      },
+      "weatheri_sulfur_dioxide": {
+        "name": "Weatheri Sulfur dioxide"
+      },
+      "weatheri_aqi": {
+        "name": "Weatheri Comprehensive AQI"
+      },
+      "source_status": {
+        "name": "Source status",
+        "state": {
+          "fresh": "Fresh",
+          "cached": "Using cached data",
+          "degraded": "Degraded",
+          "unavailable": "No usable data"
+        }
+      }
     },
     "binary_sensor": {
-      "data_current": {"name": "Data current"},
-      "forecast_data_current": {"name": "Forecast data current"},
-      "weatheri_forecast_data_current": {"name": "Weatheri forecast data current"},
-      "weatheri_air_data_current": {"name": "Weatheri air data current"}
+      "data_current": {
+        "name": "Data current"
+      },
+      "forecast_data_current": {
+        "name": "Forecast data current"
+      },
+      "weatheri_forecast_data_current": {
+        "name": "Weatheri forecast data current"
+      },
+      "weatheri_air_data_current": {
+        "name": "Weatheri air data current"
+      }
+    },
+    "weather": {
+      "weather": {
+        "name": "Weather"
+      }
+    }
+  },
+  "selector": {
+    "review_action": {
+      "options": {
+        "save": "Save",
+        "retry": "Retry failed sources",
+        "edit": "Edit location"
+      }
     }
   }
 }
