@@ -1,10 +1,10 @@
-# Korea Weather Fusion
+# Korea Weather Fusion for Home Assistant
 
 [한국어](#한국어) · [English](#english) · [대시보드 예시 / Dashboard](docs/dashboard.md)
 
-[![HACS validation](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hacs.yml/badge.svg)](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hacs.yml)
-[![Hassfest](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hassfest.yml/badge.svg)](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/hassfest.yml)
-[![Tests](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/tests.yml/badge.svg)](https://github.com/mahlernim/korea-weather-fusion/actions/workflows/tests.yml)
+[![HACS validation](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hacs.yml/badge.svg)](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hacs.yml)
+[![Hassfest](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hassfest.yml/badge.svg)](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hassfest.yml)
+[![Tests](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/tests.yml/badge.svg)](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/tests.yml)
 
 ## 한국어
 
@@ -43,7 +43,7 @@ API 키나 별도 계정은 필요하지 않습니다.
 #### HACS 사용자 지정 저장소
 
 1. HACS에서 **사용자 지정 저장소**를 엽니다.
-2. `https://github.com/mahlernim/korea-weather-fusion`을 추가하고 유형으로
+2. `https://github.com/mahlernim/ha-korea-weather-fusion`을 추가하고 유형으로
    **Integration**을 선택합니다.
 3. Korea Weather Fusion을 다운로드하고 Home Assistant를 다시 시작합니다.
 4. **설정 > 기기 및 서비스 > 통합 구성 요소 추가**에서 **한국 날씨 통합** 또는
@@ -174,7 +174,7 @@ No API key or separate account is required.
 #### HACS custom repository
 
 1. Open **Custom repositories** in HACS.
-2. Add `https://github.com/mahlernim/korea-weather-fusion` as an **Integration**.
+2. Add `https://github.com/mahlernim/ha-korea-weather-fusion` as an **Integration**.
 3. Download Korea Weather Fusion and restart Home Assistant.
 4. Go to **Settings > Devices & services > Add integration > Korea Weather Fusion**.
 

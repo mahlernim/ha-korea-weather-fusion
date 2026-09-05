@@ -6,7 +6,7 @@ Home Assistant 기본 날씨 카드에서 현재 날씨와 시간별·일별 예
 지역 설정은 시·도부터 단계별로 선택하고, 실제 조회 지역과 소스 검사 결과를
 확인한 뒤 저장하도록 개선했습니다.
 
-![기본 날씨 카드와 대기질·소스 상태](https://raw.githubusercontent.com/mahlernim/korea-weather-fusion/v0.8.0/docs/images/overview-ko.png)
+![기본 날씨 카드와 대기질·소스 상태](https://raw.githubusercontent.com/mahlernim/ha-korea-weather-fusion/v0.8.0/docs/images/overview-ko.png)
 
 - **날씨 카드와 소스 상태:** 기본 `weather` 엔티티와 소스 상태 센서를 추가했습니다.
   기존 센서와 엔티티 ID는 유지합니다.
@@ -18,7 +18,7 @@ Home Assistant 기본 날씨 카드에서 현재 날씨와 시간별·일별 예
   현재 값으로 선택되는 문제를 수정했습니다. 빈 표 셀·소수 기온·일부 오염물질
   누락 처리와 재시도·종료 시 정리를 개선했습니다.
 - **문서:** 한국어 중심 안내와 영어 설명, 실제 설정 화면, 기본 카드 YAML 예시를
-  포함했습니다. [설정 스크린샷과 사용법](https://github.com/mahlernim/korea-weather-fusion/tree/v0.8.0#한국어)
+  포함했습니다. [설정 스크린샷과 사용법](https://github.com/mahlernim/ha-korea-weather-fusion/tree/v0.8.0#한국어)
 
 **업데이트:** Home Assistant **2026.3.0 이상**이 필요합니다. HACS에서 업데이트를
 다운로드한 뒤 Home Assistant를 다시 시작하세요. 통합을 삭제하거나 다시 만들
