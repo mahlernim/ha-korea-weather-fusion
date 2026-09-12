@@ -87,7 +87,7 @@ class WeatherFusionWeatheriHealth(WeatherFusionEntity, BinarySensorEntity):
             else "air_data_current"
         )
         self._attr_translation_key = f"weatheri_{suffix}"
-        self._attr_unique_id = f"{DOMAIN}_weatheri_{suffix}"
+        self._attr_unique_id = f"{manager.identity}_weatheri_{suffix}"
         self._suggested_object_id = f"weatheri_{suffix}"
 
     @property

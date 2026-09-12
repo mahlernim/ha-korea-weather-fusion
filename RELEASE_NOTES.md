@@ -1,3 +1,32 @@
+# v0.9.0
+
+## 한국어
+
+집과 사무실 등 여러 위치를 각각 별도 기기와 날씨 엔티티로 추가할 수 있습니다.
+기존 위치의 설정과 엔티티 ID는 유지됩니다.
+
+- 위치 변경은 재구성 메뉴로 통일했습니다. 같은 위치의 사용자 설정을 유지하며 카탈로그 기본값으로 되돌리는 동작을 추가했습니다.
+- 설정 중 진행 상태, 지역 선택 오류 복구, 기상청의 더 넓은 지역 선택 표시와 사용자 언어에 맞는 누락 항목을 개선했습니다.
+- 잘못된 범위의 네이버 관측을 제외하고, 웨더아이 초기 연결이 통합 설정을 지연하지 않도록 수정했습니다.
+- 자정 갱신 요청을 이어서 처리하고, 대기질 실패 재시도와 다시 로드할 때 진행 중인 작업 정리를 개선했습니다.
+
+HACS에서 업데이트한 뒤 Home Assistant를 재시작하세요. 기존 구성 메뉴의 설정은 자동으로 이전됩니다. 통합을 삭제하거나 다시 만들 필요는 없습니다. 새 위치는 항목 추가로 설정하세요. 사용할 수 있는 소스가 전혀 없으면 설정을 저장할 수 없습니다.
+
+기상청·네이버의 최신성은 가져온 시각을 기준으로 판단합니다. 시간별 예보는 네이버에서만 제공하며 모든 항목의 무중단 제공을 보장하지 않습니다. HACS 설치는 계속 사용자 지정 저장소 방식입니다.
+
+## English
+
+Add multiple locations, such as Home and Office, each with its own device and weather entity. Existing location settings and entity IDs are preserved.
+
+- Location changes now use Reconfigure. Existing custom selectors are retained, with an explicit reset to current catalog defaults.
+- Setup shows progress, offers recovery from location-selection errors, identifies broader KMA area selection and localizes missing-capability details.
+- Invalid Naver observations are excluded. Initial Weatheri network requests no longer delay integration setup.
+- Midnight refresh requests are coalesced, air-quality failures retry, and reload waits for owned tasks and cache writes to finish.
+
+Update through HACS and restart Home Assistant. Existing Configure settings migrate automatically. Do not delete or recreate the integration. Use Add entry for another location. Saving still requires at least one usable source.
+
+KMA/Naver freshness uses fetch time. Hourly forecasts remain Naver-only, and fallback cannot guarantee every capability. HACS installation still uses a custom repository.
+
 # Korea Weather Fusion 0.8.0
 
 ## 한국어

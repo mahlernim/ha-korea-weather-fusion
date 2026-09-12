@@ -18,11 +18,16 @@ class WeatherFusionEntity(Entity):
     def __init__(self, manager: WeatherFusionManager) -> None:
         super().__init__()
         self.manager = manager
+        # Class-level IDs used by status, weather and binary health entities.
+        if self._attr_unique_id:
+            self._attr_unique_id = self._attr_unique_id.replace(
+                DOMAIN, manager.identity, 1
+            )
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, DOMAIN)},
+            identifiers={(DOMAIN, manager.identity)},
             manufacturer="Korea Weather Fusion",
             model="Weather and air quality",
-            name="Korea Weather Fusion",
+            name=manager.device_name,
             sw_version=manager.software_version,
         )
 

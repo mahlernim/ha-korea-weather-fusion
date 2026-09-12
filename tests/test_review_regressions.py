@@ -15,7 +15,6 @@ from test_fusion import manager as healthy_manager
 
 from custom_components.weather_fusion.config_flow import (
     WeatherFusionConfigFlow,
-    WeatherFusionOptionsFlow,
     _input_errors,
 )
 from custom_components.weather_fusion.diagnostics import (
@@ -30,8 +29,8 @@ from custom_components.weather_fusion.kma import parse_current_fields
 from custom_components.weather_fusion.naver import parse_weather_snapshot
 from custom_components.weather_fusion.onboarding import (
     ValidationReport,
-    async_finalize_guided_values,
     async_validate_sources,
+    finalize_guided_values,
 )
 from custom_components.weather_fusion.source import (
     KOREA_TZ,
@@ -254,8 +253,11 @@ def test_kma_partial_observations_preserve_semantic_pm_labels():
 def flow_hass(entry=None):
     return SimpleNamespace(
         config=SimpleNamespace(language="ko"),
+        async_create_task=asyncio.create_task,
         config_entries=SimpleNamespace(
-            async_get_known_entry=lambda _: entry, async_get_entry=lambda _: entry
+            async_get_known_entry=lambda _: entry,
+            async_get_entry=lambda _: entry,
+            async_update_entry=Mock(),
         ),
     )
 
@@ -266,12 +268,13 @@ def test_options_keeps_station_and_fine_grained_weather_overrides(monkeypatch, f
         "location_id": "1100000000",
         "weatheri_air_station": "강남구",
     }
-    entry = SimpleNamespace(data=current, options={})
+    entry = SimpleNamespace(data=current, options={}, title="Home")
     guided = SimpleNamespace(
-        values={**current, "kma_code": "1100000000"},
+        values=current,
         stations=("종로구", "강남구"),
         location_label="서울",
         kma_location_label="서울특별시",
+        kma_fallback=False,
     )
     monkeypatch.setattr(
         "custom_components.weather_fusion.config_flow.async_prepare_guided_setup",
@@ -287,25 +290,34 @@ def test_options_keeps_station_and_fine_grained_weather_overrides(monkeypatch, f
     )
 
     async def run():
-        flow = WeatherFusionOptionsFlow()
+        flow = WeatherFusionConfigFlow()
+        flow.context = {"source": "reconfigure", "entry_id": "entry"}
         flow.hass = flow_hass(entry)
         flow.handler = "entry"
-        form = await flow.async_step_init({"location_id": "1100000000"})
+        form = await drive(
+            flow, flow.async_step_reconfigure({"location_id": "1100000000"})
+        )
         assert form["data_schema"]({})["weatheri_air_station"] == "강남구"
-        review = await flow.async_step_air_station({"weatheri_air_station": "종로구"})
+        review = await drive(
+            flow, flow.async_step_air_station({"weatheri_air_station": "종로구"})
+        )
         assert review["step_id"] == "review"
         assert flow._pending["kma_code"] == current["kma_code"]
-        result = await flow.async_step_review({"action": "save"})
-        assert result["data"]["weatheri_air_station"] == "종로구"
+        result = await drive(flow, flow.async_step_review({"action": "save"}))
+        assert result["reason"] == "reconfigure_successful"
+        assert (
+            flow.hass.config_entries.async_update_entry.call_args.kwargs["data"][
+                "weatheri_air_station"
+            ]
+            == "종로구"
+        )
 
     asyncio.run(run())
 
 
 def test_station_only_change_preserves_weather_location():
     data = {**TEST_CONFIG, "naver_weather_query": "경남 김해 날씨"}
-    result = asyncio.run(
-        async_finalize_guided_values(None, SimpleNamespace(values=data), "창원시")
-    )
+    result = finalize_guided_values(SimpleNamespace(values=data), "창원시")
     assert result["naver_weather_query"] == data["naver_weather_query"]
     assert result["kma_code"] == data["kma_code"]
 
@@ -330,13 +342,19 @@ def test_manual_setup_requires_review_and_limited_consent(monkeypatch, frozen):
         flow = WeatherFusionConfigFlow()
         flow.context = {"source": "user"}
         flow.hass = flow_hass()
-        bad = await flow.async_step_advanced({**TEST_CONFIG, "kma_code": "1"})
+        bad = await drive(
+            flow, flow.async_step_advanced({**TEST_CONFIG, "kma_code": "1"})
+        )
         assert bad["errors"]["kma_code"] == "invalid_code"
         check.assert_not_awaited()
-        assert (await flow.async_step_advanced(TEST_CONFIG))["step_id"] == "review"
-        result = await flow.async_step_review({"action": "save"})
+        assert (await drive(flow, flow.async_step_advanced(TEST_CONFIG)))[
+            "step_id"
+        ] == "review"
+        result = await drive(flow, flow.async_step_review({"action": "save"}))
         assert result["errors"]["base"] == "limited_confirmation"
-        result = await flow.async_step_review({"action": "save", "allow_limited": True})
+        result = await drive(
+            flow, flow.async_step_review({"action": "save", "allow_limited": True})
+        )
         assert result["type"] == "create_entry"
 
     asyncio.run(run())
@@ -344,7 +362,9 @@ def test_manual_setup_requires_review_and_limited_consent(monkeypatch, frozen):
 
 def test_reconfigure_clears_old_location_options_without_changing_identity(frozen):
     entry = SimpleNamespace(
-        data=TEST_CONFIG, options={"kma_code": "1111111111", "other": True}
+        data=TEST_CONFIG,
+        options={"kma_code": "1111111111", "other": True},
+        title="Home",
     )
 
     async def run():
@@ -354,7 +374,9 @@ def test_reconfigure_clears_old_location_options_without_changing_identity(froze
         flow._pending = {**TEST_CONFIG, "kma_code": "2222222222"}
         flow._report = ValidationReport({"kma": {"temperature"}}, checked_at=NOW)
         flow.hass.config_entries.async_update_entry = Mock()
-        assert (await flow.async_step_review({"action": "save"}))["type"] == "abort"
+        assert (await drive(flow, flow.async_step_review({"action": "save"})))[
+            "type"
+        ] == "abort"
         args = flow.hass.config_entries.async_update_entry.call_args
         assert args.args[0] is entry
         assert args.kwargs["options"] == {"other": True}
@@ -370,7 +392,9 @@ def test_no_usable_sources_cannot_be_saved_even_with_consent(frozen):
         flow.context = {"source": "user"}
         flow._pending = TEST_CONFIG
         flow._report = ValidationReport({}, {"kma": "cannot_validate"}, NOW)
-        result = await flow.async_step_review({"action": "save", "allow_limited": True})
+        result = await drive(
+            flow, flow.async_step_review({"action": "save", "allow_limited": True})
+        )
         assert result["errors"]["base"] == "no_usable_sources"
 
     asyncio.run(run())
@@ -394,13 +418,15 @@ def test_review_names_missing_capabilities_and_refreshes_expired_checks(
         flow.context = {"source": "user"}
         flow._pending = TEST_CONFIG
         flow._report = initial
-        form = await flow.async_step_review()
-        assert "습도" in form["description_placeholders"]["kma"]
-        assert "풍속" in form["description_placeholders"]["kma"]
-        result = await flow.async_step_review({"action": "save", "allow_limited": True})
+        form = await drive(flow, flow.async_step_review())
+        missing = form["data_schema"]({"action": "retry"})["missing_kma"]
+        assert "humidity" in missing and "wind_speed" in missing
+        result = await drive(
+            flow, flow.async_step_review({"action": "save", "allow_limited": True})
+        )
         assert result["errors"]["base"] == "checks_refreshed"
-        check.assert_awaited_once_with(flow.hass, TEST_CONFIG)
-        assert (await flow.async_step_review({"action": "save"}))[
+        check.assert_awaited_once_with(flow.hass, TEST_CONFIG, None)
+        assert (await drive(flow, flow.async_step_review({"action": "save"})))[
             "type"
         ] == "create_entry"
 
@@ -583,7 +609,11 @@ def test_weatheri_overlap_and_unload_cancel_inflight(monkeypatch):
             await asyncio.Event().wait()
 
         manager = WeatherFusionManager(
-            SimpleNamespace(async_create_task=asyncio.create_task),
+            SimpleNamespace(
+                async_create_background_task=lambda coro, name: asyncio.create_task(
+                    coro
+                )
+            ),
             weatheri_store=SimpleNamespace(),
             settings=TEST_SETTINGS,
         )
@@ -598,3 +628,12 @@ def test_weatheri_overlap_and_unload_cancel_inflight(monkeypatch):
         assert all(task.cancelled() for task in tasks)
 
     asyncio.run(run())
+
+
+async def drive(flow, call):
+    result = await call
+    while result["type"] in ("progress", "progress_done"):
+        if result["type"] == "progress":
+            await asyncio.gather(result["progress_task"], return_exceptions=True)
+        result = await getattr(flow, "async_step_" + result["step_id"])()
+    return result
