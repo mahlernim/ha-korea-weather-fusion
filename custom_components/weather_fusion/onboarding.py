@@ -50,7 +50,16 @@ class GuidedSetup:
 
     @property
     def kma_location_label(self):
+        if self.values["kma_code"] != self.resolved_kma.zone.code:
+            return self.values["kma_code"]
         return self.resolved_kma.zone.name
+
+    @property
+    def kma_fallback(self):
+        return (
+            not self.resolved_kma.exact_city_match
+            and self.values["kma_code"] == self.resolved_kma.zone.code
+        )
 
 
 @dataclass
@@ -85,7 +94,7 @@ class ValidationReport:
         }
 
 
-async def async_prepare_guided_setup(hass, location_id):
+async def async_prepare_guided_setup(hass, location_id, overrides=None):
     try:
         location = get_location(location_id)
     except ValueError as err:
@@ -109,6 +118,8 @@ async def async_prepare_guided_setup(hass, location_id):
         "weatheri_air_region_code": location.air_region_code,
         "weatheri_air_station": "",
     }
+    if overrides:
+        values.update(overrides)
     try:
         html = await async_fetch_html(
             session, WeatherFusionSettings.from_mapping(values).weatheri_air_url
@@ -125,7 +136,7 @@ async def async_prepare_guided_setup(hass, location_id):
     )
 
 
-async def async_finalize_guided_values(hass, guided, station):
+def finalize_guided_values(guided, station):
     """Air-station selection must not silently change the weather location."""
     return {**guided.values, "weatheri_air_station": station}
 

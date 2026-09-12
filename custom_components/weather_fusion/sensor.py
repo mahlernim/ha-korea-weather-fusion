@@ -309,7 +309,7 @@ class WeatherFusionSensor(WeatherFusionEntity, SensorEntity):
     ) -> None:
         super().__init__(manager)
         self.entity_description = description
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._attr_unique_id = f"{manager.identity}_{description.key}"
 
     @property
     def suggested_object_id(self) -> str:
@@ -336,7 +336,7 @@ class WeatherFusionForecastSensor(WeatherFusionEntity, SensorEntity):
     ) -> None:
         super().__init__(manager)
         self.entity_description = description
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._attr_unique_id = f"{manager.identity}_{description.key}"
 
     @property
     def suggested_object_id(self) -> str:
@@ -366,7 +366,7 @@ class WeatherFusionKmaSensor(WeatherFusionEntity, SensorEntity):
         super().__init__(manager)
         self.entity_description = description
         self._kma_key = description.key.removeprefix("kma_")
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._attr_unique_id = f"{manager.identity}_{description.key}"
 
     @property
     def suggested_object_id(self) -> str:
@@ -396,7 +396,7 @@ class WeatherFusionNaverNumericSensor(WeatherFusionEntity, SensorEntity):
         super().__init__(manager)
         self.entity_description = description
         self._naver_key = description.key.removeprefix("naver_")
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._attr_unique_id = f"{manager.identity}_{description.key}"
 
     @property
     def suggested_object_id(self) -> str:
@@ -426,7 +426,7 @@ class WeatherFusionNaverTextSensor(WeatherFusionEntity, SensorEntity):
         super().__init__(manager)
         self.entity_description = description
         self._naver_key = description.key.removeprefix("naver_")
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._attr_unique_id = f"{manager.identity}_{description.key}"
 
     @property
     def suggested_object_id(self) -> str:
@@ -456,7 +456,7 @@ class WeatherFusionWeatheriNumericSensor(WeatherFusionEntity, SensorEntity):
         super().__init__(manager)
         self.entity_description = description
         self._weatheri_key = description.key.removeprefix("weatheri_")
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._attr_unique_id = f"{manager.identity}_{description.key}"
 
     @property
     def suggested_object_id(self) -> str:

@@ -1,8 +1,8 @@
 # Korea Weather Fusion for Home Assistant
 
-기상청, 네이버, 웨더아이의 날씨와 대기질을 Home Assistant에서 확인하세요.
+기상청·네이버·웨더아이의 날씨와 대기질을 합치고, 소스에 문제가 생기면 사용 가능한 다른 정보로 보완합니다.
 
-View Korean weather forecasts and air quality from KMA, Naver, and Weatheri in Home Assistant.
+Combine Korean weather and air quality from KMA, Naver and Weatheri, with available alternatives when a source fails.
 
 [한국어](#한국어) · [English](#english) · [설치하기](#설치) · [대시보드 예시 / Dashboard](docs/dashboard.md)
 
@@ -36,6 +36,29 @@ Korea Weather Fusion은 대한민국 날씨와 대기질 정보를 Home Assistan
 한 소스에 문제가 생겨도 다른 정상 소스를 계속 사용합니다. 이전 정보는 유효
 시간 안에서만 사용하며, 웨더아이의 유효한 마지막 정보는 재시작 후에도 유지합니다.
 
+### 데이터를 합치는 방법
+
+| 항목 | 선택 방법 | 유효 시간 |
+| --- | --- | --- |
+| 기온·습도·풍속 | 유효한 네이버와 기상청 값의 평균, 하나만 있으면 그 값 사용 | 2시간 |
+| PM10·PM2.5 | 웨더아이 → 기상청 → 네이버 순으로 사용 가능한 값 선택 | 웨더아이 3시간, 나머지 2시간 |
+| 오늘·내일 최고·최저 | 네이버 → 웨더아이 순으로 해당 날짜의 값 선택 | 최대 36시간, 날짜도 일치해야 함 |
+
+웨더아이 예보는 자료의 기준일이 오늘이어야 합니다. 시간별 예보와 3·6·9·12시간
+텍스트 예보는 네이버에서만 제공하므로 다른 소스로 대체할 수 없습니다. 소스가
+없거나 유효 시간을 넘으면 해당 항목을 사용할 수 없는 상태로 표시합니다.
+
+기상청과 네이버의 최신성은 가져온 시각을 기준으로 판단하며, 제공처가 오래된
+관측을 다시 보내는 상황을 완전히 감지하지는 못합니다. 웨더아이 대기질은 제공처의
+관측 시각을 사용합니다. 진단 정보의 `freshness_basis`에서 이 차이를 확인할 수
+있습니다. 선택·제외한 소스와 사유는 각 센서 속성에 표시됩니다.
+
+대표 관측과 텍스트 예보가 모두 없으면 **사용 가능한 데이터 없음**, 일부가 없으면
+**일부 데이터 없음**입니다. 필요한 값이 모두 있어도 선택된 소스의 이전 자료를
+사용하면 **이전 데이터 사용**으로 표시합니다. 그 밖에 필수 소스 오류가 있으면
+**일부 데이터 없음**, 나머지는 **정상**입니다. 네이버 대기질 카드는 선택 사항입니다.
+웨더아이의 유효한 자료는 재시작 후에도 복원됩니다.
+
 ### 요구 사항
 
 - Home Assistant 2026.3.0 이상
@@ -64,7 +87,8 @@ API 키나 별도 계정은 필요하지 않습니다.
 #### 기존 사용자 업데이트
 
 HACS에서 업데이트를 다운로드한 뒤 Home Assistant를 다시 시작하세요. 기존
-설정과 엔티티 ID는 유지되며 v0.8.0의 날씨·소스 상태 엔티티가 추가됩니다.
+설정과 엔티티 ID는 유지됩니다. 기존 구성 메뉴의 설정은 자동으로 이전되며,
+앞으로 위치 변경은 **재구성** 메뉴를 사용하세요.
 통합을 삭제하거나 다시 만들 필요는 없습니다.
 
 ### 처음 설정하기
@@ -82,19 +106,26 @@ HACS에서 업데이트를 다운로드한 뒤 Home Assistant를 다시 시작�
 
 <p><img src="docs/images/setup-ko.png" width="360" alt="시·도 선택 / Province selection"> <img src="docs/images/setup-station-ko.png" width="360" alt="대기 측정소 선택 / Air station selection"></p>
 
-<details>
-<summary>저장 전 소스 확인 화면 / Source review before saving</summary>
-
-<img src="docs/images/setup-review-ko.png" width="520" alt="지역별 조회 대상과 소스 검사 결과를 확인하는 Home Assistant 설정 화면">
-
-</details>
 
 지역 코드나 검색어를 직접 찾을 필요는 없습니다. 목록에 없는 지역이나 특별한
 설정이 필요한 경우에만 **고급 수동 설정**을 선택해 기존의 세부 식별자를 직접
 입력할 수 있습니다.
 
-설치 후에는 통합 항목의 **재구성** 메뉴나 기존 **구성** 메뉴에서 지역을 바꿀 수
-있습니다. 저장된 측정소가 기본 선택되며 기존 엔티티 ID는 유지됩니다.
+설치 후에는 각 통합 항목의 **재구성** 메뉴에서 위치를 변경하세요. 같은 지역의
+기존 사용자 설정은 유지합니다. 소스 확인 화면의 **카탈로그 기본값으로 재설정**을
+선택하면 현재 카탈로그 값으로 다시 설정하고 측정소를 선택할 수 있습니다.
+예보 지역이 하나인 시·도는 중간 선택을 생략하며, 네트워크 요청 중에는 진행
+상태를 표시합니다. 기상청 지역의 † 표시는 시·군 대신 더 넓은 지역을 선택했음을
+뜻합니다. 지역 선택에 실패하면 다른 시·도나 고급 수동 설정으로 이동할 수 있습니다.
+
+### 여러 위치 추가하기
+
+집과 사무실을 함께 확인하려면 Korea Weather Fusion에서 **항목 추가**를 선택해
+다른 위치를 설정하세요. 저장 전 위치 이름을 지정할 수 있습니다. 각 위치는
+별도 기기와 날씨·센서 엔티티를 가지며, 같은 예보 지역에서 다른 측정소를 선택해도
+됩니다. 한 위치의 재구성이나 삭제는 다른 위치의 설정과 엔티티에 영향을 주지
+않습니다. 위치를 변경해도 해당 항목의 엔티티 ID는 유지됩니다.
+
 고급 수동 설정에도 동일한 소스 검사가 적용됩니다. 네이버 대기질은 선택
 소스이므로 해당 카드가 없어도 나머지 필수 검사가 정상이면 저장할 수 있습니다.
 
@@ -167,6 +198,29 @@ cards. No custom frontend is required. Readings vary with the query time.
   source locations and checks before saving. Air-station changes preserve the
   selected weather area.
 
+### How fusion works
+
+| Metric | Selection | Maximum age |
+| --- | --- | --- |
+| Temperature, humidity, wind | Mean of valid Naver and KMA values, or the one available value | 2 hours |
+| PM10, PM2.5 | First usable value from Weatheri, KMA, then Naver | Weatheri 3 hours, others 2 hours |
+| Today/tomorrow high and low | First usable value for the target date from Naver, then Weatheri | 36 hours, also date-validated |
+
+Weatheri forecasts must have today's source date. Hourly and 3/6/9/12-hour text
+forecasts are Naver-only, so other sources cannot replace them. A metric becomes
+unavailable when no eligible value remains.
+
+KMA and Naver freshness uses fetch time, which cannot reliably detect a provider
+serving old observations again. Weatheri air uses the provider observation time.
+Diagnostics identify this distinction in `freshness_basis`. Sensor attributes
+show selected and rejected sources with reasons.
+
+Status is unavailable when all representative metrics and text forecasts are
+missing, and degraded when some are missing. With all capabilities available,
+selected cached/error-bearing sources produce cached status. Other required-source
+errors produce degraded status, otherwise status is fresh. The Naver PM card is
+optional. Valid Weatheri snapshots survive restarts.
+
 ### Requirements
 
 - Home Assistant 2026.3.0 or newer
@@ -193,8 +247,9 @@ under your Home Assistant configuration directory, then restart Home Assistant.
 #### Upgrading
 
 Download the update in HACS and restart Home Assistant. Existing settings and
-entity IDs remain; v0.8.0 adds weather and source-status entities. There is no need
-to delete or recreate the integration.
+entity IDs remain. Settings from the old Configure menu migrate automatically.
+Use **Reconfigure** for location changes. There is no need to delete or recreate
+the integration.
 
 ### First-time setup
 
@@ -213,9 +268,20 @@ Choose **Advanced manual setup** only for an unsupported location or a special
 configuration that needs explicit provider selectors. Manual setup uses the same
 live validation and review screen.
 
-Use the integration entry's **Reconfigure** menu to change location later. The
-existing **Configure** action also opens location setup. The saved station remains
-selected, and existing entity IDs stay stable.
+Use each entry's **Reconfigure** menu to change location. Existing custom selectors
+are retained for the same location. Choose **Reset to catalog defaults** on the
+review screen to resolve current defaults and select the station again. Provinces
+with one forecast area skip that intermediate choice. Network requests show
+progress. A † next to the KMA area indicates a broader-area fallback when city
+matching failed. The area form offers another province or advanced setup after errors.
+
+### Multiple locations
+
+Choose **Add entry** under Korea Weather Fusion to add another location. Give it a
+name before saving, such as Home or Office. Each location has a separate device,
+weather entity and sensors. Entries may use the same forecast area with different
+air stations. Reconfiguring or deleting one leaves other locations unchanged.
+Reconfiguring a location preserves that entry's entity IDs.
 
 ### Weather cards and source status
 

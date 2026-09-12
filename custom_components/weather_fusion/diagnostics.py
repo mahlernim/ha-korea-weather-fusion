@@ -15,6 +15,7 @@ async def async_get_config_entry_diagnostics(hass, entry):
                 or (source.last_reported.isoformat() if source.last_reported else None),
                 "source_date": source.attributes.get("source_date"),
                 "source_updated_at": source.attributes.get("source_updated_at"),
+                "freshness_basis": source.attributes.get("freshness_basis"),
                 "fetch_error": bool(source.attributes.get("last_error")),
                 "using_cached_data": bool(source.attributes.get("using_cached_data")),
                 "missing_or_invalid_fields": list(source.value_errors),

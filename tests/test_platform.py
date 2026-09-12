@@ -52,6 +52,20 @@ def test_real_platform_setup_and_unload(tmp_path, monkeypatch):
             subentries_data=[],
         )
         hass.config_entries._entries[entry.entry_id] = entry
+        registry = entity_registry.async_get(hass)
+        old_device = device_registry.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={("weather_fusion", "weather_fusion")},
+            name="Korea Weather Fusion",
+        )
+        old_temperature = registry.async_get_or_create(
+            "sensor",
+            "weather_fusion",
+            "weather_fusion_temperature",
+            suggested_object_id="preserved_temperature",
+            config_entry=entry,
+            device_id=old_device.id,
+        )
 
         async def initialize(manager):
             now = dt_util.utcnow().astimezone(KOREA_TZ)
@@ -93,6 +107,10 @@ def test_real_platform_setup_and_unload(tmp_path, monkeypatch):
             )
             assert len(registered) == 50
             original_ids = {item.unique_id: item.entity_id for item in registered}
+            assert entry.version == 4 and entry.data["legacy_identity"]
+            assert (
+                original_ids["weather_fusion_temperature"] == old_temperature.entity_id
+            )
             devices = device_registry.async_entries_for_config_entry(
                 device_registry.async_get(hass), entry.entry_id
             )
@@ -107,6 +125,35 @@ def test_real_platform_setup_and_unload(tmp_path, monkeypatch):
                     )
                 ),
             )
+            # A second entry in the same forecast area is valid and independent.
+            form = await hass.config_entries.flow.async_init(
+                "weather_fusion", context={"source": "user"}
+            )
+            form = await hass.config_entries.flow.async_configure(
+                form["flow_id"], {"region": "__advanced__"}
+            )
+            form = await hass.config_entries.flow.async_configure(
+                form["flow_id"], TEST_CONFIG
+            )
+            await hass.async_block_till_done()
+            form = await hass.config_entries.flow.async_configure(form["flow_id"])
+            result = await hass.config_entries.flow.async_configure(
+                form["flow_id"], {"action": "save", "name": "Office"}
+            )
+            second = result["result"]
+            await hass.async_block_till_done()
+            second_entities = entity_registry.async_entries_for_config_entry(
+                registry, second.entry_id
+            )
+            assert len(second_entities) == 50
+            second_ids = {item.unique_id: item.entity_id for item in second_entities}
+            assert not set(original_ids) & set(second_ids)
+            assert not set(original_ids.values()) & set(second_ids.values())
+            second_devices = device_registry.async_entries_for_config_entry(
+                device_registry.async_get(hass), second.entry_id
+            )
+            assert len(second_devices) == 1 and second_devices[0].id != old_device.id
+            assert second_devices[0].name == "Office"
             form = await hass.config_entries.flow.async_init(
                 "weather_fusion",
                 context={"source": "reconfigure", "entry_id": entry.entry_id},
@@ -117,6 +164,9 @@ def test_real_platform_setup_and_unload(tmp_path, monkeypatch):
             form = await hass.config_entries.flow.async_configure(
                 form["flow_id"], {**TEST_CONFIG, "weatheri_air_station": "강남구"}
             )
+            assert form["type"] == "progress"
+            await hass.async_block_till_done()
+            form = await hass.config_entries.flow.async_configure(form["flow_id"])
             assert form["step_id"] == "review"
             result = await hass.config_entries.flow.async_configure(
                 form["flow_id"], {"action": "save"}
@@ -127,11 +177,30 @@ def test_real_platform_setup_and_unload(tmp_path, monkeypatch):
             )
             await hass.async_block_till_done()
             assert entry.data["weatheri_air_station"] == "강남구"
-            assert len(hass.config_entries.async_entries("weather_fusion")) == 1
+            assert len(hass.config_entries.async_entries("weather_fusion")) == 2
+            assert (
+                second.data["weatheri_air_station"]
+                == TEST_CONFIG["weatheri_air_station"]
+            )
+            assert {
+                item.unique_id: item.entity_id
+                for item in entity_registry.async_entries_for_config_entry(
+                    registry, second.entry_id
+                )
+            } == second_ids
             after = entity_registry.async_entries_for_config_entry(
                 entity_registry.async_get(hass), entry.entry_id
             )
             assert {item.unique_id: item.entity_id for item in after} == original_ids
+            await hass.config_entries.async_remove(second.entry_id)
+            await hass.async_block_till_done()
+            assert {
+                item.unique_id: item.entity_id
+                for item in entity_registry.async_entries_for_config_entry(
+                    registry, entry.entry_id
+                )
+            } == original_ids
+            assert len(hass.states.async_all("weather")) == 1
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert "weather_fusion" not in hass.data or not hass.data["weather_fusion"]
         finally:

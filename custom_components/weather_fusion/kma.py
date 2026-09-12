@@ -112,27 +112,6 @@ async def async_resolve_location(
     return ResolvedKmaLocation(city, wide, exact_city_match=True)
 
 
-async def async_refine_with_station(
-    session: aiohttp.ClientSession,
-    resolved: ResolvedKmaLocation,
-    station: str,
-) -> ResolvedKmaLocation:
-    """Use the chosen station when it matches a KMA city-level area."""
-    wanted = _normalized_place_name(station)
-    if _place_name_matches(resolved.zone.name, wanted):
-        return resolved
-    city_zones = await async_fetch_zones(
-        session, "CITY", wide_code=resolved.wide_zone.code
-    )
-    city = next(
-        (zone for zone in city_zones if _place_name_matches(zone.name, wanted)),
-        None,
-    )
-    if city is None:
-        return resolved
-    return ResolvedKmaLocation(city, resolved.wide_zone, exact_city_match=True)
-
-
 async def async_fetch_zones(
     session: aiohttp.ClientSession,
     zone_type: str,

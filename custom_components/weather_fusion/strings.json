@@ -11,7 +11,7 @@
       },
       "air_station": {
         "title": "Choose an air-quality station",
-        "description": "Weather area: {location}. KMA area: {kma_location}. Choosing a station does not change the weather area.",
+        "description": "Weather area: {location}. KMA area: {kma_location}. Choosing a station does not change the weather area.\n\n† A broader KMA area was selected because a city match was unavailable.",
         "data": {
           "weatheri_air_station": "Weatheri air station"
         }
@@ -39,22 +39,28 @@
       },
       "review": {
         "title": "Review locations and sources",
-        "description": "Selected area: {location}\n\nKMA area: {kma_location}\nNaver weather: {naver_query}\nWeatheri forecast area: {weatheri_location}\nAir station: {station}\n\n**Data checks**\n- KMA: {kma}\n- Naver weather: {naver_weather}\n- Naver air (optional): {naver_air}\n- Weatheri forecast: {weatheri_forecast}\n- Weatheri air: {weatheri_air}\n\nLimited mode provides only usable data. Sources are restored automatically when they recover.",
+        "description": "Selected area: {location}\n\nKMA area: {kma_location}\nNaver weather: {naver_query}\nWeatheri forecast area: {weatheri_location}\nAir station: {station}\n\n**Data checks**\n- KMA: {kma}\n- Naver weather: {naver_weather}\n- Naver air (optional): {naver_air}\n- Weatheri forecast: {weatheri_forecast}\n- Weatheri air: {weatheri_air}\n\nLimited mode provides only usable data. Sources are restored automatically when they recover.\n\n✓ Ready · ! Some data missing · ◷ Stale data · × Check failed\n\n† A broader KMA area was selected because a city match was unavailable.",
         "data": {
           "action": "Next action",
-          "allow_limited": "I understand the missing data and want to save in limited mode"
+          "allow_limited": "I understand the missing data and want to save in limited mode",
+          "name": "Location name",
+          "missing_kma": "KMA missing capabilities",
+          "missing_naver_weather": "Naver weather missing capabilities",
+          "missing_naver_air": "Naver air missing capabilities",
+          "missing_weatheri_forecast": "Weatheri forecast missing capabilities",
+          "missing_weatheri_air": "Weatheri air missing capabilities"
         }
       },
       "reconfigure": {
         "title": "Choose weather location",
         "description": "Choose a province, then a forecast area. Air-quality stations are configured independently.",
         "data": {
-          "region": "Province or manual setup"
+          "region": "Province or manual setup",
+          "reset_defaults": "Reset to catalog defaults"
         }
       }
     },
     "abort": {
-      "already_configured": "Korea Weather Fusion is already configured.",
       "unknown": "The setup flow could not be resumed. Start again.",
       "reconfigure_successful": "Location settings updated."
     },
@@ -75,71 +81,10 @@
       "limited_confirmation": "Acknowledge limited mode or retry the source checks.",
       "no_usable_sources": "No usable data. Correct the location or retry.",
       "checks_refreshed": "Checks were refreshed. Review the updated results before saving."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Choose weather location",
-        "description": "Choose a province, then a forecast area. Air-quality stations are configured independently.",
-        "data": {
-          "region": "Province or manual setup"
-        }
-      },
-      "air_station": {
-        "title": "Choose an air-quality station",
-        "description": "Weather area: {location}. KMA area: {kma_location}. Choosing a station does not change the weather area.",
-        "data": {
-          "weatheri_air_station": "Weatheri air station"
-        }
-      },
-      "advanced": {
-        "title": "Advanced manual settings",
-        "description": "Edit every source selector manually. Existing entity IDs are preserved.",
-        "data": {
-          "kma_code": "KMA location code",
-          "naver_weather_query": "Naver weather query",
-          "naver_air_query": "Naver air-quality query",
-          "weatheri_forecast_rid": "Weatheri forecast RID",
-          "weatheri_forecast_group": "Weatheri forecast group",
-          "weatheri_location": "Weatheri location name",
-          "weatheri_air_region_code": "Weatheri air region code",
-          "weatheri_air_station": "Weatheri air station"
-        }
-      },
-      "location": {
-        "title": "Forecast area",
-        "description": "Choose the area whose weather you want to monitor. Type to filter the list.",
-        "data": {
-          "location_id": "Forecast area"
-        }
-      },
-      "review": {
-        "title": "Review locations and sources",
-        "description": "Selected area: {location}\n\nKMA area: {kma_location}\nNaver weather: {naver_query}\nWeatheri forecast area: {weatheri_location}\nAir station: {station}\n\n**Data checks**\n- KMA: {kma}\n- Naver weather: {naver_weather}\n- Naver air (optional): {naver_air}\n- Weatheri forecast: {weatheri_forecast}\n- Weatheri air: {weatheri_air}\n\nLimited mode provides only usable data. Sources are restored automatically when they recover.",
-        "data": {
-          "action": "Next action",
-          "allow_limited": "I understand the missing data and want to save in limited mode"
-        }
-      }
     },
-    "error": {
-      "invalid_code": "KMA code and forecast RID must contain 10 digits; group and region codes require 1–2 digits.",
-      "invalid_location": "Choose a supported forecast location.",
-      "invalid_station": "Choose a station from the current list.",
-      "cannot_connect_kma": "Could not load KMA locations. Check the connection and try again.",
-      "cannot_resolve_kma": "This location could not be matched to a KMA area. Use Advanced manual setup.",
-      "cannot_connect_weatheri": "Could not load Weatheri forecast or station data. Try again.",
-      "invalid_weatheri_data": "Weatheri returned incomplete or unexpected setup data.",
-      "cannot_connect_naver_weather": "Could not validate Naver Weather. Try again.",
-      "cannot_connect_naver_air": "Could not validate Naver air quality. Try again.",
-      "invalid_kma_data": "KMA did not return valid weather data for the resolved area.",
-      "invalid_naver_weather_data": "Naver did not return valid weather data for this location.",
-      "invalid_naver_air_data": "Naver did not return valid air-quality data for this location.",
-      "invalid_weatheri_air_data": "Weatheri did not return valid data for the selected station.",
-      "limited_confirmation": "Acknowledge limited mode or retry the source checks.",
-      "no_usable_sources": "No usable data. Correct the location or retry.",
-      "checks_refreshed": "Checks were refreshed. Review the updated results before saving."
+    "progress": {
+      "prepare": "Resolving KMA areas and air-quality stations.",
+      "validate": "Checking available data from each source."
     }
   },
   "entity": {
@@ -311,7 +256,22 @@
       "options": {
         "save": "Save",
         "retry": "Retry failed sources",
-        "edit": "Edit location"
+        "edit": "Edit location",
+        "reset": "Reset to catalog defaults"
+      }
+    },
+    "capability": {
+      "options": {
+        "temperature": "Temperature",
+        "humidity": "Humidity",
+        "wind_speed": "Wind speed",
+        "daily": "Today/tomorrow forecast",
+        "pm10": "PM10",
+        "pm25": "PM2.5",
+        "forecast_3h": "3h forecast",
+        "forecast_6h": "6h forecast",
+        "forecast_9h": "9h forecast",
+        "forecast_12h": "12h forecast"
       }
     }
   }

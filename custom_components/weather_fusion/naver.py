@@ -63,6 +63,27 @@ def _number(value: str, key: str, *, decimal: bool = False) -> float:
     return float(match.group())
 
 
+def _validated_number(value: str, key: str) -> float:
+    number = _number(value, key, decimal=True)
+    if key == "wind_speed":
+        if "km/h" in value:
+            number /= 3.6
+        elif "m/s" not in value:
+            raise ValueError(f"unknown_unit:{key}")
+    low, high = (
+        (0, 100)
+        if key == "humidity"
+        else (0, 500 / 3.6)
+        if key == "wind_speed"
+        else (0, 2000)
+        if key in ("pm10", "pm25")
+        else (-50, 60)
+    )
+    if not low <= number <= high:
+        raise ValueError(f"out_of_range:{key}")
+    return number
+
+
 def parse_weather(
     html: str | BeautifulSoup,
 ) -> tuple[dict[str, float], dict[str, str], dict[str, str]]:
@@ -81,7 +102,7 @@ def parse_weather(
         if key not in values:
             continue
         try:
-            numeric[key] = _number(values[key], key, decimal=True)
+            numeric[key] = _validated_number(values[key], key)
         except ValueError as err:
             errors[key] = str(err)
     text = {
@@ -105,7 +126,7 @@ def parse_air(html: str) -> tuple[dict[str, float], dict[str, str]]:
     numeric: dict[str, float] = {}
     for key, value in values.items():
         try:
-            numeric[key] = _number(value, key)
+            numeric[key] = _validated_number(value, key)
         except ValueError as err:
             errors[key] = str(err)
     return numeric, errors

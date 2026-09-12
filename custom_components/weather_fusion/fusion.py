@@ -266,6 +266,8 @@ class WeatherFusionManager:
         settings: WeatherFusionSettings | None = None,
     ) -> None:
         self.hass = hass
+        self.identity = entry_id
+        self.device_name = "Korea Weather Fusion"
         if settings is None:
             raise ValueError("Korea Weather Fusion settings are required")
         self.settings = settings
@@ -274,6 +276,8 @@ class WeatherFusionManager:
         self._stopped = False
         self._tasks: set[asyncio.Task] = set()
         self._weatheri_lock = asyncio.Lock()
+        self._weatheri_refresh_requested = False
+        self._weatheri_save_task = None
         self._unsub_timer: Callable[[], None] | None = None
         self._unsub_kma_timer: Callable[[], None] | None = None
         self._unsub_naver_timer: Callable[[], None] | None = None
@@ -314,14 +318,15 @@ class WeatherFusionManager:
             "weatheri_air": False,
         }
         self._weatheri_retry_count = 0
+        self._air_retry_count = 0
+        self._unsub_air_retry = None
         self._weatheri_store = weatheri_store or Store(
             hass, 1, f"{DOMAIN}.{entry_id}.weatheri"
         )
 
     async def async_initialize(self) -> None:
-        """Restore persistent Weatheri snapshots and attempt a fresh update."""
+        """Restore persistent snapshots without blocking setup on provider requests."""
         await self._async_load_weatheri_cache()
-        await self.async_update_weatheri()
 
     @callback
     def async_start(self) -> None:
@@ -338,6 +343,7 @@ class WeatherFusionManager:
             self.hass, self._async_weatheri_timer, WEATHERI_SCAN_INTERVAL
         )
         self._schedule_weatheri_midnight()
+        self._spawn(self.async_update_weatheri())
         self._spawn(self.async_update_kma())
         self._spawn(self.async_update_naver())
 
@@ -365,12 +371,24 @@ class WeatherFusionManager:
             self._unsub_weatheri_midnight()
             self._unsub_weatheri_midnight = None
         self._listeners.clear()
+        if self._unsub_air_retry:
+            self._unsub_air_retry()
+            self._unsub_air_retry = None
+
+    async def async_shutdown(self) -> None:
+        """Stop timers, drain owned tasks, then finish any in-flight cache write."""
+        tasks = tuple(self._tasks)
+        self.async_stop()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        if self._weatheri_save_task is not None:
+            await self._weatheri_save_task
 
     def _spawn(self, coroutine) -> None:
         if self._stopped:
             coroutine.close()
             return
-        task = self.hass.async_create_task(coroutine)
+        task = self.hass.async_create_background_task(coroutine, f"{DOMAIN} refresh")
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
@@ -472,10 +490,17 @@ class WeatherFusionManager:
 
     async def async_update_weatheri(self) -> None:
         """Avoid overlapping timer/retry/rollover fetches."""
-        if self._weatheri_lock.locked() or self._stopped:
+        if self._stopped:
+            return
+        if self._weatheri_lock.locked():
+            self._weatheri_refresh_requested = True
             return
         async with self._weatheri_lock:
-            await self._async_update_weatheri()
+            while not self._stopped:
+                self._weatheri_refresh_requested = False
+                await self._async_update_weatheri()
+                if not self._weatheri_refresh_requested:
+                    break
 
     async def _async_update_weatheri(self) -> None:
         """Refresh Weatheri forecast and air independently with cached fallback."""
@@ -514,6 +539,8 @@ class WeatherFusionManager:
                 self._unsub_weatheri_retry()
                 self._unsub_weatheri_retry = None
 
+        if dt_util.utcnow().astimezone(KOREA_TZ).date() != now.date():
+            self._weatheri_refresh_requested = True
         group = "weatheri_air"
         air_now = dt_util.utcnow().astimezone(KOREA_TZ)
         self._weatheri_last_attempt[group] = air_now
@@ -539,21 +566,48 @@ class WeatherFusionManager:
                 self._weatheri_air = None
             else:
                 self._weatheri_using_cache[group] = True
+            self._schedule_air_retry()
         else:
             self._weatheri_air = air
             self._weatheri_last_success[group] = air_now
             self._weatheri_last_error[group] = None
             self._weatheri_using_cache[group] = False
+            self._air_retry_count = 0
+            if self._unsub_air_retry:
+                self._unsub_air_retry()
+                self._unsub_air_retry = None
 
-        await self._weatheri_store.async_save(
-            {
-                "forecast": self._weatheri_forecast.as_dict()
-                if self._weatheri_forecast
-                else None,
-                "air": self._weatheri_air.as_dict() if self._weatheri_air else None,
-            }
+        self._weatheri_save_task = self.hass.async_create_background_task(
+            self._weatheri_store.async_save(
+                {
+                    "forecast": self._weatheri_forecast.as_dict()
+                    if self._weatheri_forecast
+                    else None,
+                    "air": self._weatheri_air.as_dict() if self._weatheri_air else None,
+                }
+            ),
+            f"{DOMAIN} save cache",
         )
+        # Shield is paired with explicit ownership and drainage in async_shutdown.
+        await asyncio.shield(self._weatheri_save_task)
+        self._weatheri_save_task = None
         self._notify()
+
+    def _schedule_air_retry(self) -> None:
+        """Retry air failures independently of forecast retry state."""
+        if self._unsub_air_retry or self._stopped:
+            return
+        delay = WEATHERI_RETRY_DELAYS[
+            min(self._air_retry_count, len(WEATHERI_RETRY_DELAYS) - 1)
+        ]
+        self._air_retry_count += 1
+
+        @callback
+        def retry(_now):
+            self._unsub_air_retry = None
+            self._spawn(self.async_update_weatheri())
+
+        self._unsub_air_retry = async_call_later(self.hass, delay, retry)
 
     def _schedule_weatheri_retry(self) -> None:
         if self._unsub_weatheri_retry:
@@ -644,6 +698,7 @@ class WeatherFusionManager:
                 else None,
                 "last_error": error,
                 "source_url": url,
+                "freshness_basis": "fetch_time",
             },
         )
 
@@ -669,6 +724,7 @@ class WeatherFusionManager:
                     if forecast
                     else None,
                     "rollover_retry_count": self._weatheri_retry_count,
+                    "freshness_basis": "fetch_time_and_forecast_date",
                 }
             )
             current = forecast is not None and forecast.source_date == now.date()
@@ -705,6 +761,8 @@ class WeatherFusionManager:
             {
                 "source_url": self.settings.weatheri_air_url,
                 "station": self.settings.weatheri_air_station,
+                "freshness_basis": "observation_time",
+                "air_retry_count": self._air_retry_count,
                 "source_updated_at": air.source_updated_at.isoformat() if air else None,
                 "data_age_minutes": round(age.total_seconds() / 60, 1)
                 if age is not None
@@ -771,6 +829,7 @@ class WeatherFusionManager:
                     else None,
                     "last_error": self._kma_last_error,
                     "source_url": self.settings.kma_url,
+                    "freshness_basis": "fetch_time",
                 },
             ),
         }

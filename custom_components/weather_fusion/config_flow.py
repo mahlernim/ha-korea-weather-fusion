@@ -8,7 +8,6 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
     SelectSelector,
@@ -35,9 +34,9 @@ from .configuration import (
 from .const import DOMAIN
 from .onboarding import (
     GuidedSetupError,
-    async_finalize_guided_values,
     async_prepare_guided_setup,
     async_validate_sources,
+    finalize_guided_values,
 )
 
 _TEXT = vol.All(str, vol.Strip, vol.Length(min=1, max=100))
@@ -121,8 +120,9 @@ def _location_schema(
         for rid, label in location_options()
         if region is None or label.split(" · ")[0] == region
     ]
-    if region is None:
-        options.append((ADVANCED_LOCATION_ID, "고급 수동 설정 / Advanced manual setup"))
+    options.append((ADVANCED_LOCATION_ID, "고급 수동 설정 / Advanced manual setup"))
+    if region is not None:
+        options.append(("__back__", "다른 시·도 선택 / Choose another province"))
     if default not in dict(options):
         default = None
     key = (
@@ -162,6 +162,12 @@ class _SetupFlow:
         self._pending = {}
         self._report = None
         self._start_step = "user"
+        self._progress_task = None
+        self._location_error = None
+        self._validation_previous = None
+        self._reset_defaults = False
+        self._entry_name = None
+        self._review_errors = {}
 
     def _current(self):
         return {}
@@ -170,11 +176,23 @@ class _SetupFlow:
         self._start_step = step_id
         current = self._pending or self._current()
         if user_input is not None:
+            self._reset_defaults = user_input.get(
+                "reset_defaults", self._reset_defaults
+            )
             if CONF_LOCATION_ID in user_input:
                 return await self.async_step_location(user_input)
             self._region = user_input["region"]
             if self._region == ADVANCED_LOCATION_ID:
                 return await self.async_step_advanced()
+            locations = [
+                (rid, label)
+                for rid, label in location_options()
+                if label.split(" · ")[0] == self._region
+            ]
+            if len(locations) == 1:
+                return await self.async_step_location(
+                    {CONF_LOCATION_ID: locations[0][0]}
+                )
             return await self.async_step_location()
         default_location = current.get(CONF_LOCATION_ID)
         regions = sorted({label.split(" · ")[0] for _, label in location_options()})
@@ -194,36 +212,105 @@ class _SetupFlow:
             if default
             else vol.Required("region")
         )
-        return self.async_show_form(
-            step_id=step_id, data_schema=vol.Schema({key: _selector(choices)})
-        )
+        fields = {key: _selector(choices)}
+        if self._current():
+            fields[vol.Optional("reset_defaults", default=self._reset_defaults)] = bool
+        return self.async_show_form(step_id=step_id, data_schema=vol.Schema(fields))
 
     async def async_step_location(self, user_input=None):
-        errors = {}
+        errors = {"base": self._location_error} if self._location_error else {}
+        self._location_error = None
         if user_input is not None:
-            self._selected_location = str(user_input[CONF_LOCATION_ID])
-            if self._selected_location == ADVANCED_LOCATION_ID:
+            selected = str(user_input[CONF_LOCATION_ID])
+            self._guided = None
+            self._report = None
+            self._pending = {}
+            if selected == "__back__":
+                self._region = None
+                self._selected_location = None
+                return await self._start(self._start_step, None)
+            self._selected_location = selected
+            if selected == ADVANCED_LOCATION_ID:
                 return await self.async_step_advanced()
-            try:
-                self._guided = await async_prepare_guided_setup(
-                    self.hass, self._selected_location
-                )
-            except GuidedSetupError as err:
-                errors["base"] = err.translation_key
-            else:
-                current = self._current()
-                if current.get(CONF_LOCATION_ID) == self._selected_location:
-                    self._selected_station = current.get(CONF_WEATHERI_AIR_STATION)
-                else:
-                    self._selected_station = None
-                self._report = None
-                return await self.async_step_air_station()
+            return await self.async_step_prepare()
         default = self._selected_location or self._current().get(CONF_LOCATION_ID)
         return self.async_show_form(
             step_id="location",
             data_schema=_location_schema(default, self._region),
             errors=errors,
         )
+
+    async def async_step_prepare(self, user_input=None):
+        if self._progress_task is None:
+            current = self._current()
+            overrides = (
+                current
+                if not self._reset_defaults
+                and current.get(CONF_LOCATION_ID) == self._selected_location
+                else None
+            )
+            self._progress_task = self.hass.async_create_task(
+                async_prepare_guided_setup(
+                    self.hass, self._selected_location, overrides
+                )
+            )
+            return self.async_show_progress(
+                step_id="prepare",
+                progress_action="prepare",
+                progress_task=self._progress_task,
+            )
+        if not self._progress_task.done():
+            return self.async_show_progress(
+                step_id="prepare",
+                progress_action="prepare",
+                progress_task=self._progress_task,
+            )
+        try:
+            self._guided = self._progress_task.result()
+        except GuidedSetupError as err:
+            self._location_error = err.translation_key
+            next_step = "location"
+        else:
+            self._selected_station = self._guided.values.get(CONF_WEATHERI_AIR_STATION)
+            next_step = "air_station"
+        finally:
+            self._progress_task = None
+        return self.async_show_progress_done(next_step_id=next_step)
+
+    async def _begin_validation(self, previous=None):
+        self._validation_previous = previous
+        return await self.async_step_validate()
+
+    async def async_step_validate(self, user_input=None):
+        if self._progress_task is None:
+            self._progress_task = self.hass.async_create_task(
+                async_validate_sources(
+                    self.hass, self._pending, self._validation_previous
+                )
+            )
+            return self.async_show_progress(
+                step_id="validate",
+                progress_action="validate",
+                progress_task=self._progress_task,
+            )
+        if not self._progress_task.done():
+            return self.async_show_progress(
+                step_id="validate",
+                progress_action="validate",
+                progress_task=self._progress_task,
+            )
+        try:
+            self._report = self._progress_task.result()
+        finally:
+            self._progress_task = None
+            self._validation_previous = None
+        return self.async_show_progress_done(next_step_id="review")
+
+    @callback
+    def async_remove(self):
+        if self._progress_task is not None:
+            self._progress_task.cancel()
+        super().async_remove()
 
     async def async_step_air_station(self, user_input=None):
         if self._guided is None:
@@ -234,27 +321,18 @@ class _SetupFlow:
             if self._selected_station not in self._guided.stations:
                 errors[CONF_WEATHERI_AIR_STATION] = "invalid_station"
             else:
-                values = await async_finalize_guided_values(
-                    self.hass, self._guided, self._selected_station
+                self._pending = finalize_guided_values(
+                    self._guided, self._selected_station
                 )
-                current = self._current()
-                if current.get(CONF_LOCATION_ID) == values[CONF_LOCATION_ID]:
-                    # Retain existing fine-grained overrides within this location.
-                    values = {
-                        **values,
-                        **current,
-                        CONF_WEATHERI_AIR_STATION: self._selected_station,
-                    }
-                self._pending = values
-                self._report = await async_validate_sources(self.hass, values)
-                return await self.async_step_review()
+                return await self._begin_validation()
         return self.async_show_form(
             step_id="air_station",
             data_schema=_station_schema(self._guided.stations, self._selected_station),
             errors=errors,
             description_placeholders={
                 "location": self._guided.location_label,
-                "kma_location": self._guided.kma_location_label,
+                "kma_location": self._guided.kma_location_label
+                + (" †" if self._guided.kma_fallback else ""),
             },
         )
 
@@ -265,8 +343,7 @@ class _SetupFlow:
             if not errors:
                 self._guided = None
                 self._pending = _advanced_values(user_input)
-                self._report = await async_validate_sources(self.hass, self._pending)
-                return await self.async_step_review()
+                return await self._begin_validation()
         return self.async_show_form(
             step_id="advanced",
             data_schema=_config_schema(user_input or self._pending or self._current()),
@@ -276,17 +353,22 @@ class _SetupFlow:
     async def async_step_review(self, user_input=None):
         if self._report is None:
             return self.async_abort(reason="unknown")
-        errors = {}
+        errors = self._review_errors
+        self._review_errors = {}
         if user_input is not None:
+            self._entry_name = user_input.get("name", self._entry_name)
             action = user_input["action"]
+            if action == "reset" and self._guided is not None:
+                self._reset_defaults = True
+                self._report = None
+                self._pending = {}
+                return await self.async_step_prepare()
             if action == "edit":
                 if self._guided is None:
                     return await self.async_step_advanced()
                 return await self._start(self._start_step, None)
             if action == "retry":
-                self._report = await async_validate_sources(
-                    self.hass, self._pending, self._report
-                )
+                return await self._begin_validation(self._report)
             elif action == "save":
                 # Do not silently accept checks that aged while the form was open.
                 if (
@@ -294,10 +376,8 @@ class _SetupFlow:
                     and dt_util.utcnow() - self._report.checked_at
                     >= timedelta(minutes=5)
                 ):
-                    self._report = await async_validate_sources(
-                        self.hass, self._pending
-                    )
-                    errors["base"] = "checks_refreshed"
+                    self._review_errors = {"base": "checks_refreshed"}
+                    return await self._begin_validation()
                 elif self._report.usable and (
                     self._report.complete or user_input.get("allow_limited", False)
                 ):
@@ -309,53 +389,66 @@ class _SetupFlow:
                         else "no_usable_sources"
                     )
         fields = {
+            vol.Optional(
+                "name",
+                default=self._entry_name
+                or self._pending.get(CONF_WEATHERI_LOCATION)
+                or "Korea Weather Fusion",
+            ): _TEXT,
             vol.Required(
                 "action", default="save" if self._report.complete else "retry"
             ): SelectSelector(
                 SelectSelectorConfig(
-                    options=["save", "retry", "edit"],
+                    options=["save", "retry", "edit"]
+                    + (["reset"] if self._guided else []),
                     translation_key="review_action",
                     mode=SelectSelectorMode.DROPDOWN,
                 )
-            )
+            ),
         }
         if not self._report.complete:
             fields[vol.Optional("allow_limited", default=False)] = bool
-        ko = getattr(getattr(self.hass, "config", None), "language", "en") == "ko"
-        labels = {
-            "ready": "정상" if ko else "Ready",
-            "missing_data": "일부 데이터 없음" if ko else "Some data missing",
-            "stale_data": "오래된 데이터" if ko else "Stale data",
-            "cannot_validate": "연결 또는 데이터 확인 실패"
-            if ko
-            else "Connection or data check failed",
+        # Status symbols are language-neutral. The frontend translates the legend
+        # and missing-capability selectors in the viewing user's language.
+        symbols = {
+            "ready": "✓",
+            "missing_data": "!",
+            "stale_data": "◷",
+            "cannot_validate": "×",
         }
-        summary = {}
-        capability_names = {
-            "temperature": "기온" if ko else "temperature",
-            "humidity": "습도" if ko else "humidity",
-            "wind_speed": "풍속" if ko else "wind speed",
-            "daily": "오늘·내일 예보" if ko else "today/tomorrow forecast",
-            "pm10": "PM10",
-            "pm25": "PM2.5",
-            **{
-                f"forecast_{hours}h": f"{hours}시간 후 예보"
-                if ko
-                else f"{hours}h forecast"
-                for hours in (3, 6, 9, 12)
-            },
+        summary = {
+            key: symbols[self._report.errors.get(key, "ready")]
+            for key in (
+                "kma",
+                "naver_weather",
+                "naver_air",
+                "weatheri_forecast",
+                "weatheri_air",
+            )
         }
-        for key in (
-            "kma",
-            "naver_weather",
-            "naver_air",
-            "weatheri_forecast",
-            "weatheri_air",
-        ):
-            summary[key] = labels[self._report.errors.get(key, "ready")]
-            if missing := self._report.missing.get(key):
-                summary[key] += (
-                    " (" + ", ".join(capability_names[item] for item in missing) + ")"
+        capabilities = [
+            "temperature",
+            "humidity",
+            "wind_speed",
+            "daily",
+            "pm10",
+            "pm25",
+            "forecast_3h",
+            "forecast_6h",
+            "forecast_9h",
+            "forecast_12h",
+        ]
+        for source, missing in self._report.missing.items():
+            if missing:
+                fields[vol.Optional(f"missing_{source}", default=missing)] = (
+                    SelectSelector(
+                        SelectSelectorConfig(
+                            options=capabilities,
+                            multiple=True,
+                            translation_key="capability",
+                            read_only=True,
+                        )
+                    )
                 )
         return self.async_show_form(
             step_id="review",
@@ -367,6 +460,7 @@ class _SetupFlow:
                 if self._guided
                 else self._pending.get(CONF_WEATHERI_LOCATION, ""),
                 "kma_location": self._guided.kma_location_label
+                + (" †" if self._guided.kma_fallback else "")
                 if self._guided
                 and self._pending[CONF_KMA_CODE] == self._guided.values[CONF_KMA_CODE]
                 else self._pending[CONF_KMA_CODE],
@@ -380,12 +474,7 @@ class _SetupFlow:
 class WeatherFusionConfigFlow(_SetupFlow, config_entries.ConfigFlow, domain=DOMAIN):
     """Configure one service while preserving its stable identity."""
 
-    VERSION = 3
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry: ConfigEntry):
-        return WeatherFusionOptionsFlow()
+    VERSION = 4
 
     def _current(self):
         if self.source == config_entries.SOURCE_RECONFIGURE:
@@ -394,11 +483,11 @@ class WeatherFusionConfigFlow(_SetupFlow, config_entries.ConfigFlow, domain=DOMA
         return {}
 
     async def async_step_user(self, user_input=None):
-        await self.async_set_unique_id(DOMAIN)
-        self._abort_if_unique_id_configured()
         return await self._start("user", user_input)
 
     async def async_step_reconfigure(self, user_input=None):
+        if self._entry_name is None:
+            self._entry_name = self._get_reconfigure_entry().title
         return await self._start("reconfigure", user_input)
 
     def _finish(self):
@@ -411,22 +500,15 @@ class WeatherFusionConfigFlow(_SetupFlow, config_entries.ConfigFlow, domain=DOMA
             }
             # The existing entry listener owns reloads, including reconfiguration.
             self.hass.config_entries.async_update_entry(
-                entry, data={**entry.data, **self._pending}, options=options
+                entry,
+                data={**entry.data, **self._pending},
+                options=options,
+                title=self._entry_name or entry.title,
             )
             return self.async_abort(reason="reconfigure_successful")
-        return self.async_create_entry(title="Korea Weather Fusion", data=self._pending)
-
-
-class WeatherFusionOptionsFlow(_SetupFlow, config_entries.OptionsFlow):
-    """Keep the existing Configure entry point compatible with reconfiguration."""
-
-    def _current(self):
-        return {**self.config_entry.data, **self.config_entry.options}
-
-    async def async_step_init(self, user_input=None):
-        return await self._start("init", user_input)
-
-    def _finish(self):
         return self.async_create_entry(
-            title="", data={**self.config_entry.options, **self._pending}
+            title=self._entry_name
+            or self._pending.get(CONF_WEATHERI_LOCATION)
+            or "Korea Weather Fusion",
+            data=self._pending,
         )
