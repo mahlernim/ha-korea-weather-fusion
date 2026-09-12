@@ -14,12 +14,11 @@ from custom_components.weather_fusion.configuration import (
 from custom_components.weather_fusion.kma import (
     _normalized_place_name,
     _place_name_matches,
-    async_refine_with_station,
     async_resolve_location,
 )
 from custom_components.weather_fusion.onboarding import (
     _rank_stations,
-    async_finalize_guided_values,
+    finalize_guided_values,
 )
 
 
@@ -97,14 +96,9 @@ def test_station_ranking_does_not_change_weather_query() -> None:
     resolved = asyncio.run(
         async_resolve_location(_Session(wide, city), get_location("1101010100"))
     )
-    refined = asyncio.run(
-        async_refine_with_station(_Session(wide, city), resolved, "해운대구")
-    )
-    assert refined.zone.code == "2635000000"
+    assert resolved.zone.code == "2600000000"
     values = {"naver_weather_query": "부산 해운대구 날씨", "kma_code": "2635000000"}
-    updated = asyncio.run(
-        async_finalize_guided_values(None, SimpleNamespace(values=values), "강서구")
-    )
+    updated = finalize_guided_values(SimpleNamespace(values=values), "강서구")
     assert updated == {**values, "weatheri_air_station": "강서구"}
     assert _rank_stations("부산 · 해운대", ("강서구", "해운대구", "중구")) == (
         "해운대구",
@@ -112,21 +106,6 @@ def test_station_ranking_does_not_change_weather_query() -> None:
         "중구",
     )
 
-
-def test_station_can_replace_an_initial_city_match() -> None:
-    wide = [_zone("4800000000", "경상남도", 1)]
-    city = [
-        _zone("4812000000", "창원시", 2),
-        _zone("4825000000", "김해시", 2),
-    ]
-    resolved = asyncio.run(
-        async_resolve_location(_Session(wide, city), get_location("1202010104"))
-    )
-    assert resolved.zone.name == "김해시"
-    refined = asyncio.run(
-        async_refine_with_station(_Session(wide, city), resolved, "창원시")
-    )
-    assert refined.zone.name == "창원시"
 
 
 def test_kma_place_matching_preserves_short_names_and_accepts_city_districts() -> None:

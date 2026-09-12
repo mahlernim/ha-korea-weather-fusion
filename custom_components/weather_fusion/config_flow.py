@@ -35,9 +35,9 @@ from .configuration import (
 from .const import DOMAIN
 from .onboarding import (
     GuidedSetupError,
-    async_finalize_guided_values,
     async_prepare_guided_setup,
     async_validate_sources,
+    finalize_guided_values,
 )
 
 _TEXT = vol.All(str, vol.Strip, vol.Length(min=1, max=100))
@@ -234,8 +234,8 @@ class _SetupFlow:
             if self._selected_station not in self._guided.stations:
                 errors[CONF_WEATHERI_AIR_STATION] = "invalid_station"
             else:
-                values = await async_finalize_guided_values(
-                    self.hass, self._guided, self._selected_station
+                values = finalize_guided_values(
+                    self._guided, self._selected_station
                 )
                 current = self._current()
                 if current.get(CONF_LOCATION_ID) == values[CONF_LOCATION_ID]:

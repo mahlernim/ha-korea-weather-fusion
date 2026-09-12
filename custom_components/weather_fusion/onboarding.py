@@ -125,8 +125,13 @@ async def async_prepare_guided_setup(hass, location_id):
     )
 
 
-async def async_finalize_guided_values(hass, guided, station):
-    """Air-station selection must not silently change the weather location."""
+def finalize_guided_values(guided, station):
+    """Air-station selection must not silently change the weather location.
+
+    Kept as its own function (rather than inlining at the call site) so
+    the station step has a single place asserting the location is left
+    as the guided flow resolved it.
+    """
     return {**guided.values, "weatheri_air_station": station}
 
 

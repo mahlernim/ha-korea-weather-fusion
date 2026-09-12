@@ -30,8 +30,8 @@ from custom_components.weather_fusion.kma import parse_current_fields
 from custom_components.weather_fusion.naver import parse_weather_snapshot
 from custom_components.weather_fusion.onboarding import (
     ValidationReport,
-    async_finalize_guided_values,
     async_validate_sources,
+    finalize_guided_values,
 )
 from custom_components.weather_fusion.source import (
     KOREA_TZ,
@@ -303,9 +303,7 @@ def test_options_keeps_station_and_fine_grained_weather_overrides(monkeypatch, f
 
 def test_station_only_change_preserves_weather_location():
     data = {**TEST_CONFIG, "naver_weather_query": "경남 김해 날씨"}
-    result = asyncio.run(
-        async_finalize_guided_values(None, SimpleNamespace(values=data), "창원시")
-    )
+    result = finalize_guided_values(SimpleNamespace(values=data), "창원시")
     assert result["naver_weather_query"] == data["naver_weather_query"]
     assert result["kma_code"] == data["kma_code"]
 
