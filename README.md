@@ -1,7 +1,12 @@
 # Korea Weather Fusion for Home Assistant
 
-[한국어](#한국어) · [English](#english) · [대시보드 예시 / Dashboard](docs/dashboard.md)
+기상청, 네이버, 웨더아이의 날씨와 대기질을 Home Assistant에서 확인하세요.
 
+View Korean weather forecasts and air quality from KMA, Naver, and Weatheri in Home Assistant.
+
+[한국어](#한국어) · [English](#english) · [설치하기](#설치) · [대시보드 예시 / Dashboard](docs/dashboard.md)
+
+[![HACS custom repository](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mahlernim&repository=ha-korea-weather-fusion&category=integration)
 [![HACS validation](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hacs.yml/badge.svg)](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hacs.yml)
 [![Hassfest](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hassfest.yml/badge.svg)](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/hassfest.yml)
 [![Tests](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/tests.yml/badge.svg)](https://github.com/mahlernim/ha-korea-weather-fusion/actions/workflows/tests.yml)
